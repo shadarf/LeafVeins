@@ -1,0 +1,272 @@
+{
+  "version": 1,
+  "values": [
+    {
+      "name": "default_compiler",
+      "group": "compiler",
+      "value": "pdflatex",
+      "unit": "",
+      "source": "config.compiler.default_compiler"
+    },
+    {
+      "name": "compilation_timeout",
+      "group": "compiler",
+      "value": 60,
+      "unit": "seconds",
+      "source": "config.compiler.timeout"
+    },
+    {
+      "name": "max_passes",
+      "group": "compiler",
+      "value": 5,
+      "unit": "",
+      "source": "config.compiler.max_passes"
+    },
+    {
+      "name": "bibtex_enabled",
+      "group": "compiler",
+      "value": true,
+      "source": "config.compiler.bibtex_enabled"
+    },
+    {
+      "name": "makeindex_enabled",
+      "group": "compiler",
+      "value": true,
+      "source": "config.compiler.makeindex_enabled"
+    },
+    {
+      "name": "shell_escape",
+      "group": "compiler",
+      "value": false,
+      "source": "config.compiler.shell_escape"
+    },
+    {
+      "name": "synctex_enabled",
+      "group": "compiler",
+      "value": true,
+      "source": "config.compiler.synctex"
+    },
+    {
+      "name": "stop_on_first_error",
+      "group": "compiler",
+      "value": false,
+      "source": "config.compiler.stop_on_first_error"
+    },
+    {
+      "name": "compile_size_limit",
+      "group": "compiler",
+      "value": "7mb",
+      "source": "config.compiler.compile_size_limit"
+    },
+    {
+      "name": "latexmk_use_latexmk",
+      "group": "latexmk",
+      "value": true,
+      "source": "config.latexmk.use_latexmk"
+    },
+    {
+      "name": "latexmk_force_continue_on_error",
+      "group": "latexmk",
+      "value": true,
+      "source": "config.latexmk.force_continue_on_error"
+    },
+    {
+      "name": "editor_font_family",
+      "group": "editor",
+      "value": "Consolas",
+      "source": "config.editor.font_family"
+    },
+    {
+      "name": "editor_font_size",
+      "group": "editor",
+      "value": 11,
+      "unit": "pt",
+      "source": "config.editor.font_size"
+    },
+    {
+      "name": "editor_tab_width",
+      "group": "editor",
+      "value": 4,
+      "unit": "spaces",
+      "source": "config.editor.tab_width"
+    },
+    {
+      "name": "editor_use_spaces",
+      "group": "editor",
+      "value": true,
+      "source": "config.editor.use_spaces"
+    },
+    {
+      "name": "editor_line_numbers",
+      "group": "editor",
+      "value": true,
+      "source": "config.editor.line_numbers"
+    },
+    {
+      "name": "editor_word_wrap",
+      "group": "editor",
+      "value": false,
+      "source": "config.editor.word_wrap"
+    },
+    {
+      "name": "editor_auto_save",
+      "group": "editor",
+      "value": true,
+      "source": "config.editor.auto_save"
+    },
+    {
+      "name": "editor_auto_save_interval",
+      "group": "editor",
+      "value": 30,
+      "unit": "seconds",
+      "source": "config.editor.auto_save_interval"
+    },
+    {
+      "name": "editor_highlight_current_line",
+      "group": "editor",
+      "value": true,
+      "source": "config.editor.highlight_current_line"
+    },
+    {
+      "name": "editor_bracket_matching",
+      "group": "editor",
+      "value": true,
+      "source": "config.editor.bracket_matching"
+    },
+    {
+      "name": "preview_auto_refresh",
+      "group": "preview",
+      "value": true,
+      "source": "config.preview.auto_refresh"
+    },
+    {
+      "name": "preview_zoom_level",
+      "group": "preview",
+      "value": 100,
+      "unit": "%",
+      "source": "config.preview.zoom_level"
+    },
+    {
+      "name": "preview_show_margins",
+      "group": "preview",
+      "value": true,
+      "source": "config.preview.show_margins"
+    },
+    {
+      "name": "preview_sync_scroll",
+      "group": "preview",
+      "value": false,
+      "source": "config.preview.sync_scroll"
+    },
+    {
+      "name": "ui_theme",
+      "group": "ui",
+      "value": "dark",
+      "source": "config.ui.theme"
+    },
+    {
+      "name": "ui_show_file_tree",
+      "group": "ui",
+      "value": true,
+      "source": "config.ui.show_file_tree"
+    },
+    {
+      "name": "ui_show_preview",
+      "group": "ui",
+      "value": true,
+      "source": "config.ui.show_preview"
+    },
+    {
+      "name": "ui_show_console",
+      "group": "ui",
+      "value": true,
+      "source": "config.ui.show_console"
+    },
+    {
+      "name": "project_default_main_file",
+      "group": "project",
+      "value": "main.tex",
+      "source": "config.project.default_main_file"
+    },
+    {
+      "name": "project_backup_on_compile",
+      "group": "project",
+      "value": true,
+      "source": "config.project.backup_on_compile"
+    },
+    {
+      "name": "project_max_backups",
+      "group": "project",
+      "value": 10,
+      "source": "config.project.max_backups"
+    },
+    {
+      "name": "texlive_openout_any",
+      "group": "texlive",
+      "value": "",
+      "source": "config.texlive.openout_any"
+    },
+    {
+      "name": "texlive_max_print_line",
+      "group": "texlive",
+      "value": "",
+      "source": "config.texlive.max_print_line"
+    },
+    {
+      "name": "default_timeout_ms",
+      "group": "clsi_defaults",
+      "value": 60000,
+      "unit": "milliseconds",
+      "source": "settings.defaults.cjs:compileTimeoutMs (LatexRunner.js:39)"
+    },
+    {
+      "name": "synctex_timeout_ms",
+      "group": "clsi_defaults",
+      "value": 60000,
+      "unit": "milliseconds",
+      "source": "settings.defaults.cjs:synctexTimeoutMs (CompileManager.js:599)"
+    },
+    {
+      "name": "wordcount_timeout_ms",
+      "group": "clsi_defaults",
+      "value": 60000,
+      "unit": "milliseconds",
+      "source": "settings.defaults.cjs:wordcountTimeoutMs (CompileManager.js:715)"
+    },
+    {
+      "name": "compile_size_limit_bytes",
+      "group": "clsi_defaults",
+      "value": 7340032,
+      "unit": "bytes (7mb)",
+      "source": "settings.defaults.cjs:compileSizeLimit"
+    },
+    {
+      "name": "process_lifespan_limit_ms",
+      "group": "clsi_defaults",
+      "value": 172800000,
+      "unit": "milliseconds (2 days)",
+      "source": "settings.defaults.cjs:processLifespanLimitMs"
+    },
+    {
+      "name": "expire_project_after_idle_ms",
+      "group": "clsi_defaults",
+      "value": 86400000,
+      "unit": "milliseconds (24 hours)",
+      "source": "settings.defaults.cjs:expireProjectAfterIdleMs"
+    },
+    {
+      "name": "check_projects_interval_ms",
+      "group": "clsi_defaults",
+      "value": 600000,
+      "unit": "milliseconds (10 minutes)",
+      "source": "settings.defaults.cjs:checkProjectsIntervalMs"
+    },
+    {
+      "name": "max_fdb_file_size_bytes",
+      "group": "clsi_defaults",
+      "value": 1048576,
+      "unit": "bytes (1 MB)",
+      "source": "CompileManager.js:398 (MAX_FDB_FILE_SIZE)"
+    }
+  ]
+}

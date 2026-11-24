@@ -1,0 +1,16 @@
+# LeafVeins - Requirements
+# Core dependencies
+PyQt6>=6.6.0
+
+# PDF rendering (choose one)
+# Option 1: pypdfium2 (recommended, faster)
+pypdfium2>=4.0.0
+
+# Option 2: PyMuPDF (alternative)
+# pymupdf>=1.23.0
+
+# Image support (bundled by build.py and used for icon artwork)
+Pillow>=10.0.0
+
+# Optional: for additional features
+# watchdog>=3.0.0  # File system watching

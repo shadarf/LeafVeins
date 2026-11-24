@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# PyInstaller build output
+/build/
+/dist/
+*.spec
+
+# Runtime / generated files
+*.log
+*.dmp
+*.sqlite
+*.db
+.leafveins/
+app/shots/
+
+# Local screenshots (the curated one lives in docs/screenshots/)
+/*.png
+!docs/screenshots/*.png
+
+# Local test data and tooling artifacts
+/TEST_projects/
+/graft/
+/.claude/
+/.mcp.json
+/.ignore
+/capture/
+/checks/
+/inbox/
+/pinned/
+/reference/
+/investigation.cany/
+craft.json
+feed.json
+usage.json
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

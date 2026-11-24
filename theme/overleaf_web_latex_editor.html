@@ -1,0 +1,2579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Overleaf, Online LaTeX Editor</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono & Latin Modern / Crimson Pro for PDF -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- KaTeX for crisp LaTeX Math Rendering in PDF Preview -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            serifPdf: ['Crimson Pro', 'Georgia', 'serif'],
+          },
+          colors: {
+            olDark: '#1e2530',
+            olHeader: '#2c3645',
+            olHeaderHover: '#384457',
+            olGreen: '#138a07',
+            olGreenHover: '#0f7305',
+            olGreenLight: '#4f9c45',
+            olSidebar: '#f4f6f9',
+            olBorder: '#d7dce4',
+            olPdfBg: '#e4e8ee',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbars for authentic desktop IDE feel */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd2dd;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #aab4c4;
+    }
+
+    /* Syntax Highlighting Overlay Alignment */
+    .editor-container {
+      position: relative;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+      line-height: 1.6;
+      tab-size: 2;
+    }
+    .editor-textarea,
+    .editor-highlight {
+      margin: 0;
+      padding: 12px 16px;
+      border: 0;
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      tab-size: inherit;
+      letter-spacing: normal;
+      word-spacing: normal;
+      white-space: pre;
+      overflow-wrap: normal;
+    }
+    .editor-textarea {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      color: transparent;
+      background: transparent;
+      caret-color: #1e2530;
+      resize: none;
+      outline: none;
+      overflow: auto;
+      z-index: 2;
+    }
+    .editor-textarea::selection {
+      background: rgba(19, 138, 7, 0.22);
+    }
+    .editor-highlight {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+      color: #24292f;
+    }
+
+    /* LaTeX Syntax Colors */
+    .tok-cmd { color: #0550ae; font-weight: 500; }
+    .tok-env { color: #8250df; font-weight: 600; }
+    .tok-brace { color: #cf222e; font-weight: 600; }
+    .tok-bracket { color: #953800; }
+    .tok-math { color: #116329; background-color: rgba(19, 138, 7, 0.06); border-radius: 2px; }
+    .tok-comment { color: #6e7781; font-style: italic; }
+    .tok-bibkey { color: #0a3069; font-weight: 600; }
+
+    /* Active Line Indicator */
+    .active-line-band {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 21.6px; /* 13.5px * 1.6 */
+      background-color: rgba(56, 139, 253, 0.08);
+      border-top: 1px solid rgba(56, 139, 253, 0.14);
+      border-bottom: 1px solid rgba(56, 139, 253, 0.14);
+      pointer-events: none;
+      z-index: 0;
+      transition: top 0.06s ease-out;
+    }
+
+    /* Splitter handles */
+    .resizer-v {
+      width: 5px;
+      cursor: col-resize;
+      background-color: #d7dce4;
+      transition: background-color 0.15s;
+      z-index: 20;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .resizer-v:hover,
+    .resizer-v.active {
+      background-color: #138a07;
+    }
+    .resizer-v::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 1px;
+      width: 3px;
+      height: 24px;
+      transform: translateY(-50%);
+      border-left: 1px solid rgba(255,255,255,0.6);
+      border-right: 1px solid rgba(255,255,255,0.6);
+    }
+
+    /* PDF Sheet Styling */
+    .pdf-page {
+      background: #ffffff;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.16), 0 1px 3px rgba(15, 23, 42, 0.08);
+      font-family: 'Crimson Pro', Georgia, serif;
+      color: #111827;
+      transition: transform 0.15s ease;
+      transform-origin: top center;
+    }
+    .pdf-two-col {
+      column-count: 2;
+      column-gap: 22px;
+      text-align: justify;
+      hyphens: auto;
+    }
+    @media (max-width: 640px) {
+      .pdf-two-col {
+        column-count: 1;
+      }
+    }
+
+    /* Toast Notification Animation */
+    @keyframes slideUpFade {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .toast-enter {
+      animation: slideUpFade 0.2s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col bg-olSidebar text-slate-800 select-none">
+
+  <!-- ==================== 1. TOP NAVIGATION BAR ==================== -->
+  <header class="h-12 bg-olHeader text-white flex items-center justify-between px-2.5 border-b border-olDark shrink-0 z-30">
+    <!-- Left: Menu Button, Logo & Up/Home -->
+    <div class="flex items-center gap-1.5 min-w-0">
+      <button id="btn-menu" title="Project Menu" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded hover:bg-olHeaderHover transition text-xs font-medium">
+        <i data-lucide="menu" class="w-4 h-4 text-slate-200"></i>
+        <span class="hidden sm:inline">Menu</span>
+      </button>
+
+      <div class="h-5 w-px bg-slate-600 mx-0.5"></div>
+
+      <!-- Overleaf Leaf Mark -->
+      <a href="#top" onclick="event.preventDefault(); showToast('Returned to project root');" class="flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-olHeaderHover transition" title="Overleaf Projects">
+        <svg class="w-5 h-5" viewBox="0 0 32 32" fill="none">
+          <path d="M25.6 5.2C18.5 4.6 10.4 8.8 7.5 16.3C5.3 21.9 7.4 26.8 7.4 26.8C7.4 26.8 11.4 22.1 15.8 19.3C20.2 16.5 26.2 14.9 27.4 7.7C27.6 6.3 26.8 5.3 25.6 5.2Z" fill="#4f9c45"/>
+          <path d="M13.5 23.8C10.4 25.2 7.4 26.8 7.4 26.8C7.4 26.8 9.2 21.8 13.8 17.6C18.4 13.4 24.5 9.8 26.8 6.4C24.1 12.6 19.3 21.2 13.5 23.8Z" fill="#138a07"/>
+          <circle cx="11.5" cy="22.5" r="5.5" stroke="#ffffff" stroke-width="2.2" fill="#2c3645"/>
+        </svg>
+        <span class="font-semibold tracking-tight text-sm hidden md:inline">Overleaf</span>
+      </a>
+    </div>
+
+    <!-- Center: Editable Project Title -->
+    <div class="flex items-center justify-center flex-1 max-w-md mx-2">
+      <div id="project-title-wrapper" class="group flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-olHeaderHover cursor-pointer transition max-w-full" title="Click to rename project">
+        <span id="project-title-display" class="text-sm font-medium truncate">Neural-Symbolic Reasoning in Autonomous Systems</span>
+        <i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition shrink-0"></i>
+      </div>
+      <input id="project-title-input" type="text" value="Neural-Symbolic Reasoning in Autonomous Systems" class="hidden bg-olDark text-white text-sm font-medium px-2.5 py-1 rounded border border-olGreenLight outline-none w-full text-center" />
+    </div>
+
+    <!-- Right: Action Buttons (Review, Share, History, Chat, Layout, Help) -->
+    <div class="flex items-center gap-1">
+      <!-- Collaborator Avatars -->
+      <div class="hidden xl:flex items-center -space-x-1.5 mr-2 cursor-pointer" onclick="openModal('modal-share')" title="Active collaborators">
+        <div class="w-6 h-6 rounded-full bg-emerald-600 border-2 border-olHeader flex items-center justify-center text-[10px] font-bold">EL</div>
+        <div class="w-6 h-6 rounded-full bg-sky-600 border-2 border-olHeader flex items-center justify-center text-[10px] font-bold">MR</div>
+        <div class="w-6 h-6 rounded-full bg-amber-600 border-2 border-olHeader flex items-center justify-center text-[10px] font-bold">+2</div>
+      </div>
+
+      <button id="btn-review" onclick="toggleRightDrawer('review')" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded hover:bg-olHeaderHover transition text-xs font-medium" title="Track Changes & Comments">
+        <i data-lucide="message-square-plus" class="w-4 h-4 text-amber-400"></i>
+        <span class="hidden lg:inline">Review</span>
+        <span class="bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full font-semibold">3</span>
+      </button>
+
+      <button onclick="openModal('modal-share')" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded hover:bg-olHeaderHover transition text-xs font-medium" title="Share Project">
+        <i data-lucide="users" class="w-4 h-4 text-slate-200"></i>
+        <span class="hidden md:inline">Share</span>
+      </button>
+
+      <button id="btn-history" onclick="toggleHistoryMode()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded hover:bg-olHeaderHover transition text-xs font-medium" title="Version History">
+        <i data-lucide="history" class="w-4 h-4 text-slate-200"></i>
+        <span class="hidden md:inline">History</span>
+      </button>
+
+      <button id="btn-chat" onclick="toggleRightDrawer('chat')" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded hover:bg-olHeaderHover transition text-xs font-medium relative" title="Project Chat">
+        <i data-lucide="messages-square" class="w-4 h-4 text-slate-200"></i>
+        <span class="hidden lg:inline">Chat</span>
+        <span id="chat-unread-dot" class="w-2 h-2 rounded-full bg-olGreenLight absolute top-1.5 right-1.5"></span>
+      </button>
+
+      <!-- Layout Switcher Dropdown -->
+      <div class="relative">
+        <button id="btn-layout" onclick="toggleDropdown('dropdown-layout')" class="flex items-center gap-1 px-2 py-1.5 rounded hover:bg-olHeaderHover transition text-xs font-medium" title="Switch Editor/PDF Layout">
+          <i data-lucide="columns-2" class="w-4 h-4 text-slate-200"></i>
+          <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+        </button>
+        <div id="dropdown-layout" class="hidden absolute right-0 mt-1.5 w-48 bg-white text-slate-800 rounded-md shadow-xl border border-olBorder py-1 z-50 text-xs">
+          <div class="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Workspace Layout</div>
+          <button onclick="setLayout('split')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center justify-between">
+            <span class="flex items-center gap-2"><i data-lucide="columns-2" class="w-3.5 h-3.5 text-olGreen"></i> Editor & PDF</span>
+            <span id="check-layout-split" class="text-olGreen font-bold">✓</span>
+          </button>
+          <button onclick="setLayout('editor')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center justify-between">
+            <span class="flex items-center gap-2"><i data-lucide="file-code" class="w-3.5 h-3.5 text-slate-500"></i> Editor Only</span>
+            <span id="check-layout-editor" class="text-olGreen font-bold hidden">✓</span>
+          </button>
+          <button onclick="setLayout('pdf')" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center justify-between">
+            <span class="flex items-center gap-2"><i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-500"></i> PDF Only</span>
+            <span id="check-layout-pdf" class="text-olGreen font-bold hidden">✓</span>
+          </button>
+          <div class="border-t border-slate-200 my-1"></div>
+          <button onclick="toggleSidebar()" class="w-full text-left px-3 py-2 hover:bg-slate-100 flex items-center gap-2">
+            <i data-lucide="panel-left" class="w-3.5 h-3.5 text-slate-500"></i> Toggle File Tree
+          </button>
+        </div>
+      </div>
+
+      <button onclick="openModal('modal-help')" class="p-1.5 rounded hover:bg-olHeaderHover transition text-slate-300 hover:text-white" title="LaTeX Shortcuts & Help">
+        <i data-lucide="help-circle" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== VERSION HISTORY BANNER (Hidden by default) ==================== -->
+  <div id="history-bar" class="hidden bg-slate-800 text-white px-4 py-2 border-b border-slate-700 flex flex-wrap items-center justify-between gap-2 text-xs z-20">
+    <div class="flex items-center gap-3">
+      <span class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded uppercase text-[10px] tracking-wide">Version History</span>
+      <span>Viewing snapshot: <strong id="history-version-label" class="text-emerald-300">v2.4 — Current Working Draft (Today, 18:54)</strong></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <select id="history-select" onchange="previewHistoryVersion(this.value)" class="bg-slate-700 border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none">
+        <option value="current">v2.4 — Current Working Draft (18:54)</option>
+        <option value="v2.3">v2.3 — Added Theorem 1 & Proof (Yesterday, 21:12)</option>
+        <option value="v2.2">v2.2 — Updated Architecture TikZ Diagram (Nov 21)</option>
+        <option value="v2.1">v2.1 — Initial IEEE Template Setup (Nov 18)</option>
+      </select>
+      <button onclick="restoreHistoryVersion()" class="bg-olGreen hover:bg-olGreenHover text-white px-3 py-1 rounded font-medium transition">Restore Version</button>
+      <button onclick="toggleHistoryMode()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1 rounded transition">Exit History</button>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN WORKSPACE AREA ==================== -->
+  <div id="workspace" class="flex-1 flex overflow-hidden relative">
+
+    <!-- ==================== 2. LEFT SIDEBAR (FILE TREE & OUTLINE) ==================== -->
+    <aside id="left-sidebar" style="width: 245px;" class="bg-olSidebar border-r border-olBorder flex flex-col shrink-0 overflow-hidden">
+      <!-- File Tree Action Toolbar -->
+      <div class="h-9 px-2 bg-[#ebeff5] border-b border-olBorder flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-0.5">
+          <button onclick="openNewFileModal('file')" class="p-1.5 rounded hover:bg-slate-200 text-slate-700 transition" title="New File">
+            <i data-lucide="file-plus-2" class="w-4 h-4"></i>
+          </button>
+          <button onclick="openNewFileModal('folder')" class="p-1.5 rounded hover:bg-slate-200 text-slate-700 transition" title="New Folder">
+            <i data-lucide="folder-plus" class="w-4 h-4"></i>
+          </button>
+          <button onclick="triggerUploadSimulation()" class="p-1.5 rounded hover:bg-slate-200 text-slate-700 transition" title="Upload File">
+            <i data-lucide="upload" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-0.5">
+          <button onclick="renameSelectedFile()" class="p-1.5 rounded hover:bg-slate-200 text-slate-700 transition" title="Rename Selected">
+            <i data-lucide="pencil-line" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="deleteSelectedFile()" class="p-1.5 rounded hover:bg-slate-200 text-red-600 transition" title="Delete Selected">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hierarchical File Tree -->
+      <div id="file-tree-container" class="flex-1 overflow-y-auto py-1.5 px-1.5 text-xs">
+        <!-- Populated dynamically by JS -->
+      </div>
+
+      <!-- Collapsible File Outline Section -->
+      <div class="border-t border-olBorder bg-white flex flex-col shrink-0" style="max-height: 40%;">
+        <button onclick="toggleOutline()" class="h-8 px-2.5 bg-[#ebeff5] hover:bg-slate-200/70 flex items-center justify-between text-xs font-semibold text-slate-700 transition">
+          <span class="flex items-center gap-1.5">
+            <i id="outline-chevron" data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-500 transition-transform"></i>
+            File Outline
+          </span>
+          <span id="outline-count" class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded-full">0</span>
+        </button>
+        <div id="document-outline-list" class="overflow-y-auto p-1.5 space-y-0.5 text-xs">
+          <!-- Dynamically extracted \section, \subsection, etc. -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- Left Resizer -->
+    <div id="resizer-left" class="resizer-v" title="Drag to resize sidebar"></div>
+
+    <!-- ==================== 3. CENTER PANE (LATEX EDITOR) ==================== -->
+    <main id="editor-pane" class="flex-1 flex flex-col bg-white min-w-[260px] overflow-hidden">
+      <!-- Editor Formatting & Mode Toolbar -->
+      <div class="h-9 px-2 bg-[#f8fafc] border-b border-olBorder flex items-center justify-between gap-1 shrink-0 overflow-x-auto">
+        <!-- Source / Visual Toggle -->
+        <div class="flex items-center bg-slate-200/80 p-0.5 rounded text-xs font-medium shrink-0">
+          <button id="mode-source-btn" onclick="setEditorMode('source')" class="px-2.5 py-1 rounded bg-white text-slate-900 shadow-sm transition">Code Editor</button>
+          <button id="mode-visual-btn" onclick="setEditorMode('visual')" class="px-2.5 py-1 rounded text-slate-600 hover:text-slate-900 transition">Visual Editor</button>
+        </div>
+
+        <!-- Formatting Tools -->
+        <div class="flex items-center gap-0.5 shrink-0">
+          <button onclick="editorUndo()" class="p-1.5 rounded hover:bg-slate-200 text-slate-700" title="Undo (Ctrl+Z)">
+            <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="editorRedo()" class="p-1.5 rounded hover:bg-slate-200 text-slate-700" title="Redo (Ctrl+Y)">
+            <i data-lucide="redo-2" class="w-3.5 h-3.5"></i>
+          </button>
+
+          <div class="h-4 w-px bg-slate-300 mx-1"></div>
+
+          <button onclick="wrapSelection('\\textbf{', '}')" class="p-1.5 rounded hover:bg-slate-200 text-slate-700 font-bold text-xs" title="Bold (\textbf)">
+            <i data-lucide="bold" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="wrapSelection('\\textit{', '}')" class="p-1.5 rounded hover:bg-slate-200 text-slate-700" title="Italic (\textit)">
+            <i data-lucide="italic" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="wrapSelection('$', '$')" class="px-1.5 py-1 rounded hover:bg-slate-200 text-slate-700 font-mono text-xs font-semibold" title="Inline Math ($...$)">
+            ∑
+          </button>
+
+          <div class="h-4 w-px bg-slate-300 mx-1"></div>
+
+          <button onclick="insertSnippet('\\href{https://example.com}{Link Text}')" class="p-1.5 rounded hover:bg-slate-200 text-slate-700" title="Insert Link (\href)">
+            <i data-lucide="link" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="openCitationPicker()" class="p-1.5 rounded hover:bg-slate-200 text-slate-700" title="Insert Citation (\cite)">
+            <i data-lucide="quote" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="insertFigureSnippet()" class="p-1.5 rounded hover:bg-slate-200 text-slate-700" title="Insert Figure">
+            <i data-lucide="image" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="insertTableSnippet()" class="p-1.5 rounded hover:bg-slate-200 text-slate-700" title="Insert Table">
+            <i data-lucide="table" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="insertListSnippet('itemize')" class="p-1.5 rounded hover:bg-slate-200 text-slate-700" title="Bulleted List (itemize)">
+            <i data-lucide="list" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="insertListSnippet('enumerate')" class="p-1.5 rounded hover:bg-slate-200 text-slate-700" title="Numbered List (enumerate)">
+            <i data-lucide="list-ordered" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <!-- Search & Comment Buttons -->
+        <div class="flex items-center gap-1 shrink-0">
+          <button onclick="toggleSearchBar()" class="p-1.5 rounded hover:bg-slate-200 text-slate-700" title="Find & Replace (Ctrl+F)">
+            <i data-lucide="search" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="addInlineComment()" class="flex items-center gap-1 px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-medium" title="Add Review Comment at Cursor">
+            <i data-lucide="message-square-plus" class="w-3 h-3"></i>
+            <span class="hidden xl:inline">Comment</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Open File Tabs Bar -->
+      <div id="editor-tabs-bar" class="h-8 bg-[#eef1f6] border-b border-olBorder flex items-center px-1 gap-1 overflow-x-auto shrink-0 text-xs">
+        <!-- Tabs rendered dynamically -->
+      </div>
+
+      <!-- Find & Replace Bar (Collapsible) -->
+      <div id="search-replace-bar" class="hidden bg-slate-100 border-b border-olBorder px-3 py-1.5 flex flex-wrap items-center gap-2 text-xs">
+        <div class="flex items-center bg-white border border-slate-300 rounded px-2 py-1">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 mr-1.5"></i>
+          <input id="search-input" type="text" placeholder="Find in file..." oninput="performSearch()" class="outline-none w-36 sm:w-44 text-xs" />
+          <span id="search-match-count" class="text-[11px] text-slate-400 ml-1">0 matches</span>
+        </div>
+        <div class="flex items-center bg-white border border-slate-300 rounded px-2 py-1">
+          <input id="replace-input" type="text" placeholder="Replace with..." class="outline-none w-32 sm:w-40 text-xs" />
+        </div>
+        <button onclick="replaceNextMatch()" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 rounded font-medium">Replace</button>
+        <button onclick="replaceAllMatches()" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 rounded font-medium">Replace All</button>
+        <button onclick="toggleSearchBar()" class="ml-auto p-1 text-slate-500 hover:text-slate-800"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <!-- Code Editor Body -->
+      <div id="code-editor-wrapper" class="flex-1 flex overflow-hidden relative bg-white">
+        <!-- Line Numbers Gutter -->
+        <div id="line-numbers" class="w-12 bg-[#f8fafc] border-r border-slate-200 text-right pr-2.5 py-3 font-mono text-[13.5px] leading-[1.6] text-slate-400 select-none overflow-hidden shrink-0">
+          1
+        </div>
+
+        <!-- Syntax Highlighting + Editable Textarea Container -->
+        <div class="editor-container flex-1 relative overflow-hidden">
+          <div id="active-line-band" class="active-line-band" style="top: 12px;"></div>
+          <pre id="editor-highlight" class="editor-highlight" aria-hidden="true"></pre>
+          <textarea
+            id="editor-textarea"
+            class="editor-textarea"
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+            autocorrect="off"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Visual Editor Mode Banner & Preview Helper (Shown when Visual Editor is toggled) -->
+      <div id="visual-editor-wrapper" class="hidden flex-1 overflow-y-auto p-6 bg-white select-text">
+        <div class="max-w-2xl mx-auto">
+          <div class="mb-4 px-3 py-2 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center justify-between">
+            <span class="flex items-center gap-2"><i data-lucide="sparkles" class="w-4 h-4 text-olGreen"></i> <strong>Visual Rich-Text Mode:</strong> Click any block below to edit formatted text directly; changes sync back to LaTeX source.</span>
+            <button onclick="setEditorMode('source')" class="underline font-semibold">Switch to Code</button>
+          </div>
+          <div id="visual-editor-blocks" class="space-y-4 font-serifPdf text-base leading-relaxed">
+            <!-- Populated dynamically from current LaTeX AST -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Image Preview Pane (Shown when clicking an image file in the tree) -->
+      <div id="image-viewer-wrapper" class="hidden flex-1 flex-col items-center justify-center bg-slate-50 p-6 overflow-auto">
+        <div class="bg-white p-4 rounded-lg shadow border border-olBorder max-w-lg w-full text-center">
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3" id="image-viewer-title">figures/architecture.png</div>
+          <div class="bg-slate-100 rounded p-4 flex items-center justify-center border border-slate-200">
+            <!-- Vector Architecture Diagram SVG -->
+            <svg viewBox="0 0 460 220" class="w-full h-auto">
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#334155"/>
+                </marker>
+              </defs>
+              <rect x="15" y="70" width="95" height="75" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+              <text x="62" y="102" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#0369a1">Multi-Modal</text>
+              <text x="62" y="118" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#0369a1">Sensors</text>
+
+              <line x1="110" y1="107" x2="148" y2="107" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+
+              <rect x="152" y="30" width="130" height="60" rx="8" fill="#dcfce7" stroke="#138a07" stroke-width="2"/>
+              <text x="217" y="56" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#14532d">Neural Perception</text>
+              <text x="217" y="72" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#166534">(ViT + Cross-Attention)</text>
+
+              <rect x="152" y="125" width="130" height="60" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+              <text x="217" y="151" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#78350f">Symbolic Reasoner</text>
+              <text x="217" y="167" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#92400e">(Differentiable Logic)</text>
+
+              <line x1="217" y1="90" x2="217" y2="121" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+              <line x1="282" y1="107" x2="322" y2="107" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+
+              <rect x="326" y="70" width="115" height="75" rx="8" fill="#f3e8ff" stroke="#7e22ce" stroke-width="2"/>
+              <text x="383" y="102" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#581c87">Verified Policy</text>
+              <text x="383" y="118" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#6b21a8">&amp; Control Output</text>
+            </svg>
+          </div>
+          <p class="text-xs text-slate-500 mt-3">Dimensions: 1920 × 920 px • PNG • 148 KB</p>
+        </div>
+      </div>
+
+      <!-- Editor Status Footer -->
+      <div class="h-6 px-3 bg-[#f8fafc] border-t border-olBorder flex items-center justify-between text-[11px] text-slate-500 shrink-0">
+        <div class="flex items-center gap-3">
+          <span id="status-cursor">Ln 1, Col 1</span>
+          <span id="status-wordcount">0 words</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span>UTF-8</span>
+          <span id="status-compiler-badge" class="text-olGreen font-medium">pdfLaTeX • TeX Live 2025</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Resizer -->
+    <div id="resizer-right" class="resizer-v" title="Drag to resize PDF preview"></div>
+
+    <!-- ==================== 5. RIGHT PANE (LIVE PDF PREVIEW & LOGS) ==================== -->
+    <section id="pdf-pane" style="width: 46%;" class="flex flex-col bg-olPdfBg min-w-[280px] overflow-hidden">
+      <!-- PDF Toolbar -->
+      <div class="h-9 px-2.5 bg-[#f8fafc] border-b border-olBorder flex items-center justify-between gap-1.5 shrink-0">
+        <!-- Recompile Split Button -->
+        <div class="flex items-center relative">
+          <button id="btn-recompile" onclick="compileProject(true)" class="bg-olGreen hover:bg-olGreenHover text-white text-xs font-semibold px-3 py-1.5 rounded-l flex items-center gap-1.5 transition shadow-sm">
+            <i id="recompile-icon" data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span id="recompile-label">Recompile</span>
+          </button>
+          <button onclick="toggleDropdown('dropdown-recompile')" class="bg-olGreen hover:bg-olGreenHover text-white px-1.5 py-1.5 rounded-r border-l border-emerald-800 transition shadow-sm" title="Recompile Options">
+            <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+          </button>
+
+          <!-- Recompile Dropdown -->
+          <div id="dropdown-recompile" class="hidden absolute left-0 top-full mt-1 w-52 bg-white text-slate-800 rounded-md shadow-xl border border-olBorder py-1.5 z-50 text-xs">
+            <div class="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase">Auto Compile</div>
+            <button onclick="setAutoCompile(true)" class="w-full text-left px-3 py-1.5 hover:bg-slate-100 flex items-center justify-between">
+              <span>On (Live Preview)</span>
+              <span id="check-autocompile-on" class="text-olGreen font-bold">✓</span>
+            </button>
+            <button onclick="setAutoCompile(false)" class="w-full text-left px-3 py-1.5 hover:bg-slate-100 flex items-center justify-between">
+              <span>Off (Manual Only)</span>
+              <span id="check-autocompile-off" class="text-olGreen font-bold hidden">✓</span>
+            </button>
+            <div class="border-t border-slate-200 my-1"></div>
+            <button onclick="compileFromScratch()" class="w-full text-left px-3 py-1.5 hover:bg-slate-100 flex items-center gap-2 text-slate-700">
+              <i data-lucide="trash" class="w-3.5 h-3.5 text-slate-400"></i> Recompile from scratch
+            </button>
+          </div>
+        </div>
+
+        <!-- Logs & Output Files + Download PDF -->
+        <div class="flex items-center gap-1">
+          <button id="btn-toggle-logs" onclick="toggleLogsView()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-xs font-medium text-slate-700 transition" title="View LaTeX Compilation Logs">
+            <i data-lucide="file-warning" class="w-3.5 h-3.5 text-amber-600"></i>
+            <span class="hidden sm:inline">Logs</span>
+            <span id="log-badge-count" class="bg-amber-100 text-amber-800 px-1.5 rounded-full text-[10px] font-bold">1</span>
+          </button>
+
+          <button onclick="downloadPdfSimulation()" class="p-1.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition" title="Download PDF">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <!-- Zoom & Page Navigation -->
+        <div class="flex items-center gap-1 text-xs text-slate-600">
+          <button onclick="adjustZoom(-0.1)" class="p-1 rounded hover:bg-slate-200" title="Zoom Out">
+            <i data-lucide="zoom-out" class="w-3.5 h-3.5"></i>
+          </button>
+          <span id="zoom-level-label" class="font-mono text-[11px] w-10 text-center">100%</span>
+          <button onclick="adjustZoom(0.1)" class="p-1 rounded hover:bg-slate-200" title="Zoom In">
+            <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="resetZoom()" class="hidden xl:inline-flex p-1 rounded hover:bg-slate-200" title="Fit to Width">
+            <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- PDF Rendered Document Viewport -->
+      <div id="pdf-viewer-container" class="flex-1 overflow-auto p-4 sm:p-6 flex flex-col items-center gap-6 select-text relative">
+        <!-- Floating Page Indicator Pill -->
+        <div class="sticky top-0 z-10 bg-slate-800/85 backdrop-blur text-white text-[11px] px-3 py-1 rounded-full shadow flex items-center gap-2">
+          <span>Page <strong id="pdf-current-page">1</strong> of <strong id="pdf-total-pages">2</strong></span>
+          <span class="text-slate-400">|</span>
+          <span id="compile-time-label" class="text-emerald-300">Compiled in 0.42s</span>
+        </div>
+
+        <!-- Rendered LaTeX PDF Pages Container -->
+        <div id="pdf-pages-wrapper" class="flex flex-col items-center gap-6 w-full max-w-[780px]">
+          <!-- Dynamically rendered academic paper pages -->
+        </div>
+      </div>
+
+      <!-- Compilation Logs & Output Files View (Toggled by Logs button) -->
+      <div id="logs-viewer-container" class="hidden flex-1 flex-col bg-white overflow-hidden">
+        <div class="px-3 py-2 bg-slate-100 border-b border-olBorder flex items-center justify-between">
+          <div class="flex items-center gap-2 text-xs">
+            <button onclick="filterLogs('all')" id="log-tab-all" class="px-2.5 py-1 rounded bg-white shadow-sm font-semibold text-slate-800">All Messages (3)</button>
+            <button onclick="filterLogs('error')" id="log-tab-error" class="px-2.5 py-1 rounded hover:bg-white/60 text-red-700 font-medium">Errors (<span id="err-count">0</span>)</button>
+            <button onclick="filterLogs('warning')" id="log-tab-warning" class="px-2.5 py-1 rounded hover:bg-white/60 text-amber-700 font-medium">Warnings (<span id="warn-count">1</span>)</button>
+            <button onclick="filterLogs('raw')" id="log-tab-raw" class="px-2.5 py-1 rounded hover:bg-white/60 text-slate-600 font-medium">Raw Log</button>
+          </div>
+          <button onclick="toggleLogsView()" class="text-xs text-olGreen hover:underline font-semibold flex items-center gap-1">
+            <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Back to PDF
+          </button>
+        </div>
+
+        <div id="logs-content-area" class="flex-1 overflow-y-auto p-4 space-y-2.5 text-xs select-text">
+          <!-- Dynamically populated log entries -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== RIGHT SLIDE-OUT DRAWER (REVIEW / CHAT) ==================== -->
+    <aside id="right-drawer" class="hidden w-72 bg-white border-l border-olBorder flex flex-col shrink-0 z-20 shadow-lg">
+      <!-- Drawer Header -->
+      <div class="h-9 px-3 bg-[#f8fafc] border-b border-olBorder flex items-center justify-between">
+        <span id="right-drawer-title" class="text-xs font-bold text-slate-700 uppercase tracking-wide">Review & Comments</span>
+        <button onclick="closeRightDrawer()" class="p-1 rounded hover:bg-slate-200 text-slate-500">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Review Panel Content -->
+      <div id="drawer-review-content" class="flex-1 flex flex-col overflow-hidden">
+        <div class="p-2.5 bg-amber-50/70 border-b border-amber-200/70 flex items-center justify-between text-xs">
+          <span class="font-medium text-amber-900">Track Changes</span>
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="track-changes-toggle" onchange="showToast(this.checked ? 'Track Changes enabled' : 'Track Changes paused')" class="sr-only peer" checked>
+            <div class="w-8 h-4 bg-slate-300 peer-checked:bg-olGreen rounded-full relative transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:w-3 after:h-3 after:rounded-full peer-checked:after:translate-x-4 after:transition"></div>
+          </label>
+        </div>
+        <div id="review-comments-list" class="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
+          <!-- Review comment cards -->
+        </div>
+      </div>
+
+      <!-- Chat Panel Content -->
+      <div id="drawer-chat-content" class="hidden flex-1 flex flex-col overflow-hidden">
+        <div id="chat-messages-list" class="flex-1 overflow-y-auto p-3 space-y-3 text-xs bg-slate-50">
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-[11px] text-slate-500">
+              <span class="font-semibold text-sky-700">Dr. Marcus Reid</span>
+              <span>18:41</span>
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm text-slate-700">
+              I updated the convergence bound in Section 3. Can you verify Eq. (2) before we submit to NeurIPS?
+            </div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-[11px] text-slate-500">
+              <span class="font-semibold text-emerald-700">Dr. Elena Lin (You)</span>
+              <span>18:46</span>
+            </div>
+            <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 text-slate-800">
+              Checking it now! Also refining the TikZ pipeline diagram in <code>chapters/method.tex</code>.
+            </div>
+          </div>
+        </div>
+        <form onsubmit="sendChatMessage(event)" class="p-2.5 bg-white border-t border-olBorder flex gap-1.5">
+          <input id="chat-input" type="text" placeholder="Message collaborators..." class="flex-1 border border-slate-300 rounded px-2.5 py-1.5 text-xs outline-none focus:border-olGreen" />
+          <button type="submit" class="bg-olGreen hover:bg-olGreenHover text-white px-2.5 py-1.5 rounded text-xs font-medium">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+          </button>
+        </form>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ==================== SLIDE-OUT LEFT OVERLEAF MENU DRAWER ==================== -->
+  <div id="menu-drawer-backdrop" onclick="closeMenuDrawer()" class="hidden fixed inset-0 bg-slate-900/50 z-40 transition-opacity"></div>
+  <div id="menu-drawer" class="fixed top-0 left-0 bottom-0 w-72 bg-olDark text-slate-200 z-50 transform -translate-x-full transition-transform duration-200 flex flex-col shadow-2xl">
+    <div class="h-12 px-4 bg-[#161b24] flex items-center justify-between border-b border-slate-700">
+      <div class="flex items-center gap-2 font-semibold text-white">
+        <span class="w-2.5 h-2.5 rounded-full bg-olGreenLight"></span>
+        <span>Project Settings</span>
+      </div>
+      <button onclick="closeMenuDrawer()" class="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+      <!-- Download Section -->
+      <div>
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Download</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="downloadSourceZip()" class="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 py-2 px-3 rounded text-white font-medium transition">
+            <i data-lucide="file-archive" class="w-3.5 h-3.5 text-sky-400"></i> Source (.zip)
+          </button>
+          <button onclick="downloadPdfSimulation()" class="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 py-2 px-3 rounded text-white font-medium transition">
+            <i data-lucide="file-text" class="w-3.5 h-3.5 text-emerald-400"></i> PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- Actions Section -->
+      <div>
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Actions</div>
+        <div class="space-y-1">
+          <button onclick="cloneProjectSimulation()" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800 flex items-center gap-2.5 transition">
+            <i data-lucide="copy" class="w-4 h-4 text-slate-400"></i> Copy Project
+          </button>
+          <button onclick="showWordCountModal()" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800 flex items-center gap-2.5 transition">
+            <i data-lucide="hash" class="w-4 h-4 text-slate-400"></i> Word Count
+          </button>
+        </div>
+      </div>
+
+      <!-- Compiler Settings -->
+      <div class="space-y-3 pt-2 border-t border-slate-700/80">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Compiler Settings</div>
+
+        <div>
+          <label class="block text-slate-400 mb-1">Compiler</label>
+          <select id="setting-compiler" onchange="updateCompilerSettings()" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white outline-none focus:border-olGreenLight">
+            <option value="pdfLaTeX">pdfLaTeX</option>
+            <option value="XeLaTeX">XeLaTeX</option>
+            <option value="LuaLaTeX">LuaLaTeX</option>
+            <option value="LaTeX">LaTeX (dvipdf)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1">TeX Live Version</label>
+          <select id="setting-texlive" onchange="updateCompilerSettings()" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white outline-none focus:border-olGreenLight">
+            <option value="TeX Live 2025">2025 (Recommended)</option>
+            <option value="TeX Live 2024">2024</option>
+            <option value="TeX Live 2023">2023 (Legacy)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1">Main Document</label>
+          <select id="setting-main-doc" onchange="updateMainDocument(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white outline-none focus:border-olGreenLight">
+            <option value="main.tex">main.tex</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1">Editor Theme</label>
+          <select id="setting-theme" onchange="toggleEditorTheme(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-white outline-none focus:border-olGreenLight">
+            <option value="light">Overleaf Light (TextMate)</option>
+            <option value="dark">Overleaf Dark (Monokai)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Share Modal -->
+  <div id="modal-share" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full overflow-hidden text-xs">
+      <div class="px-4 py-3 bg-olHeader text-white flex items-center justify-between">
+        <span class="font-semibold text-sm flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-olGreenLight"></i> Share Project</span>
+        <button onclick="closeModal('modal-share')" class="text-slate-300 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="p-4 space-y-4">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1.5">Invite Collaborators by Email</label>
+          <div class="flex gap-2">
+            <input id="share-email-input" type="email" placeholder="colleague@university.edu" class="flex-1 border border-slate-300 rounded px-2.5 py-1.5 outline-none focus:border-olGreen" />
+            <select id="share-role-select" class="border border-slate-300 rounded px-2 py-1.5 bg-slate-50">
+              <option value="Can Edit">Can Edit</option>
+              <option value="Read Only">Read Only</option>
+            </select>
+            <button onclick="inviteCollaborator()" class="bg-olGreen hover:bg-olGreenHover text-white px-3 py-1.5 rounded font-semibold">Share</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="font-semibold text-slate-700 mb-2">Project Members</div>
+          <div id="collaborators-list" class="space-y-2 max-h-40 overflow-y-auto">
+            <div class="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-200">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px]">EL</span>
+                <div>
+                  <div class="font-semibold text-slate-800">Dr. Elena Lin (You)</div>
+                  <div class="text-[11px] text-slate-500">elena.lin@mit.edu</div>
+                </div>
+              </div>
+              <span class="text-slate-500 font-medium">Owner</span>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-200">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold text-[10px]">MR</span>
+                <div>
+                  <div class="font-semibold text-slate-800">Dr. Marcus Reid</div>
+                  <div class="text-[11px] text-slate-500">m.reid@stanford.edu</div>
+                </div>
+              </div>
+              <span class="text-slate-600 font-medium">Can Edit</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-semibold text-slate-700">Link Sharing</span>
+            <span class="text-[11px] text-olGreen font-medium">Anyone with link can view</span>
+          </div>
+          <div class="flex gap-2">
+            <input id="share-link-url" type="text" readonly value="https://www.overleaf.com/read/x9k2m7pqz8nw" class="flex-1 bg-slate-100 border border-slate-300 rounded px-2.5 py-1.5 text-slate-600 font-mono text-[11px]" />
+            <button onclick="copyShareLink()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-medium">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New File / Folder Modal -->
+  <div id="modal-new-file" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl max-w-sm w-full overflow-hidden text-xs">
+      <div class="px-4 py-3 bg-olHeader text-white flex items-center justify-between">
+        <span id="modal-new-file-title" class="font-semibold text-sm">New File</span>
+        <button onclick="closeModal('modal-new-file')" class="text-slate-300 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form onsubmit="createNewItem(event)" class="p-4 space-y-3">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Name (e.g., <code>chapters/results.tex</code>)</label>
+          <input id="new-item-name" type="text" required placeholder="appendix.tex" class="w-full border border-slate-300 rounded px-2.5 py-1.5 outline-none focus:border-olGreen font-mono" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modal-new-file')" class="px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">Cancel</button>
+          <button type="submit" class="px-3 py-1.5 rounded bg-olGreen hover:bg-olGreenHover text-white font-semibold">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Help & Shortcuts Modal -->
+  <div id="modal-help" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl max-w-lg w-full overflow-hidden text-xs">
+      <div class="px-4 py-3 bg-olHeader text-white flex items-center justify-between">
+        <span class="font-semibold text-sm flex items-center gap-2"><i data-lucide="keyboard" class="w-4 h-4 text-olGreenLight"></i> LaTeX Keyboard Shortcuts & Quick Reference</span>
+        <button onclick="closeModal('modal-help')" class="text-slate-300 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="p-4 space-y-3 max-h-96 overflow-y-auto">
+        <div class="grid grid-cols-2 gap-2">
+          <div class="p-2 bg-slate-50 rounded border border-slate-200 flex justify-between"><span>Recompile PDF</span><kbd class="px-1.5 py-0.5 bg-white border rounded font-mono">Ctrl + S</kbd></div>
+          <div class="p-2 bg-slate-50 rounded border border-slate-200 flex justify-between"><span>Find & Replace</span><kbd class="px-1.5 py-0.5 bg-white border rounded font-mono">Ctrl + F</kbd></div>
+          <div class="p-2 bg-slate-50 rounded border border-slate-200 flex justify-between"><span>Bold Text</span><kbd class="px-1.5 py-0.5 bg-white border rounded font-mono">Ctrl + B</kbd></div>
+          <div class="p-2 bg-slate-50 rounded border border-slate-200 flex justify-between"><span>Italic Text</span><kbd class="px-1.5 py-0.5 bg-white border rounded font-mono">Ctrl + I</kbd></div>
+        </div>
+        <div class="border-t border-slate-200 pt-3">
+          <h4 class="font-bold text-slate-800 mb-1.5">Live Preview Tips</h4>
+          <p class="text-slate-600 leading-relaxed">Edit any <code>.tex</code> file in the project tree—including <code>\title</code>, <code>\author</code>, <code>\section</code>, <code>\subsection</code>, inline math <code>$...$</code>, display equations <code>\begin{equation}...\end{equation}</code>, or <code>\cite{...}</code>—and watch the academic paper preview update automatically.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-8 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ==================== JAVASCRIPT APPLICATION LOGIC ==================== -->
+  <script>
+    // ==================== 1. INITIAL PROJECT FILES & STATE ====================
+    const initialFiles = {
+      'main.tex': {
+        type: 'tex',
+        folder: '',
+        content: `% Overleaf NeurIPS / IEEE Conference Paper Template
+\\documentclass[10pt,twocolumn,letterpaper]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{amsmath,amssymb,amsthm}
+\\usepackage{graphicx}
+\\usepackage{booktabs}
+\\usepackage{hyperref}
+
+\\title{Neural-Symbolic Reasoning with Differentiable Logic Constraints in Autonomous Systems}
+\\author{Elena Lin$^{1}$, Marcus Reid$^{2}$, and Sora Takahashi$^{1}$ \\\\
+$^{1}$Massachusetts Institute of Technology \\quad $^{2}$Stanford University \\\\
+\\texttt{\\{elena.lin, sora\\}@mit.edu, m.reid@stanford.edu}}
+\\date{November 2026}
+
+\\begin{document}
+
+\\maketitle
+
+\\begin{abstract}
+Modern autonomous agents rely heavily on deep neural perception, yet often violate hard safety invariants under distributional shift. We introduce \\textbf{NeuroSym-Control}, a hybrid architecture that couples Vision Transformer state estimators with a differentiable first-order logic solver. Across benchmark navigation tasks, our method reduces safety constraint violations by $94.2\\%$ while preserving real-time inference latency below $8.4\\text{ ms}$.
+\\end{abstract}
+
+\\input{chapters/intro}
+
+\\section{Differentiable Logic Formulation}
+Let $\\mathcal{S} \\subseteq \\mathbb{R}^d$ denote the continuous latent state space extracted by our perception backbone $f_\\theta(x_t)$. To enforce temporal logic specifications $\\varphi$, we define a smooth satisfaction loss $\\mathcal{L}_{\\text{logic}}$ over trajectory rollouts:
+\\begin{equation}
+\\mathcal{L}_{\\text{logic}}(\\theta, \\pi) = \\mathbb{E}_{\\tau \\sim \\pi} \\left[ \\sum_{t=0}^{T} \\max\\left(0, \\gamma - \\rho_\\varphi(f_\\theta(x_t), u_t)\\right)^2 \\right]
+\\end{equation}
+where $\\rho_\\varphi(\\cdot)$ denotes the quantitative robustness semantics and $\\gamma > 0$ is the safety margin \\cite{garcez2022neurosymbolic,badings2023robust}.
+
+\\subsection{Adaptive Lagrangian Multiplier}
+During policy optimization, we balance task reward $J(\\pi)$ against symbolic invariant satisfaction using dual gradient ascent:
+\\begin{equation}
+\\nabla_\\lambda \\mathcal{J}(\\theta, \\pi, \\lambda) = \\mathcal{L}_{\\text{logic}}(\\theta, \\pi) - \\epsilon_{\\text{tol}}
+\\end{equation}
+
+\\begin{figure}[h]
+\\centering
+\\includegraphics[width=0.95\\linewidth]{figures/architecture.png}
+\\caption{End-to-end NeuroSym-Control architecture combining multi-modal sensor fusion with differentiable logic verification.}
+\\label{fig:arch}
+\\end{figure}
+
+\\section{Empirical Evaluation}
+We evaluate our approach against pure Reinforcement Learning (PPO) and Control Barrier Functions (CBF) across three safety-critical environments. As summarized in Table~\\ref{tab:results}, NeuroSym-Control achieves the highest success rate with near-zero invariant breaches \\cite{schulman2017ppo}.
+
+\\begin{table}[h]
+\\centering
+\\caption{Safety violation rate and task completion across 1,000 out-of-distribution test episodes.}
+\\label{tab:results}
+\\begin{tabular}{lcc}
+\\toprule
+\\textbf{Method} & \\textbf{Success (\\%)} & \\textbf{Violations (\\%)} \\\\
+\\midrule
+PPO Baseline & 78.4 & 18.9 \\\\
+Neural CBF & 86.1 & 4.3 \\\\
+\\textbf{NeuroSym-Control (Ours)} & \\textbf{96.8} & \\textbf{0.6} \\\\
+\\bottomrule
+\\end{tabular}
+\\end{table}
+
+\\section{Conclusion}
+Integrating differentiable symbolic reasoning directly into neural policy loops bridges the gap between perceptual generalization and formal safety guarantees.
+
+\\bibliographystyle{plain}
+\\bibliography{references}
+
+\\end{document}`
+      },
+      'chapters/intro.tex': {
+        type: 'tex',
+        folder: 'chapters',
+        content: `\\section{Introduction}
+Autonomous systems operating in unstructured human environments must simultaneously interpret high-dimensional sensory streams and obey strict operational rules \\cite{russell2021ai}. Purely data-driven end-to-end policies excel at pattern recognition, yet remain brittle when encountering rare edge cases.
+
+Conversely, classical symbolic planners guarantee logical consistency over discrete abstractions, but struggle with raw perceptual noise. In this work, we unify both paradigms via three core contributions:
+\\begin{itemize}
+  \\item A continuous relaxation of metric temporal logic that supports exact backpropagation through perception layers.
+  \\item An online dual-ascent controller that dynamically tightens safety margins under elevated epistemic uncertainty.
+  \\item Comprehensive validation on physical mobile manipulation hardware and high-fidelity urban driving benchmarks.
+\\end{itemize}`
+      },
+      'references.bib': {
+        type: 'bib',
+        folder: '',
+        content: `@article{garcez2022neurosymbolic,
+  title={Neurosymbolic AI: The 3rd Wave},
+  author={Garcez, Artur d'Avila and Lamb, Luis C.},
+  journal={Artificial Intelligence Review},
+  volume={56},
+  pages={12387--12406},
+  year={2023}
+}
+
+@inproceedings{badings2023robust,
+  title={Robust Control for Dynamical Systems with Non-Gaussian Noise via Formal Abstractions},
+  author={Badings, Thom S. and Abate, Alessandro and Jansen, Nils},
+  booktitle={Proceedings of AAAI},
+  year={2023}
+}
+
+@article{schulman2017ppo,
+  title={Proximal Policy Optimization Algorithms},
+  author={Schulman, John and Wolski, Filip and Dhariwal, Prafulla},
+  journal={arXiv preprint arXiv:1707.06347},
+  year={2017}
+}
+
+@book{russell2021ai,
+  title={Artificial Intelligence: A Modern Approach},
+  author={Russell, Stuart and Norvig, Peter},
+  edition={4th},
+  publisher={Pearson},
+  year={2021}
+}`
+      },
+      'styles.sty': {
+        type: 'sty',
+        folder: '',
+        content: `% Custom macros for NeuroSym-Control paper
+\\NeedsTeXFormat{LaTeX2e}
+\\ProvidesPackage{styles}[2026/11/24 Custom Paper Macros]
+
+\\newcommand{\\R}{\\mathbb{R}}
+\\newcommand{\\E}{\\mathbb{E}}
+\\newcommand{\\norm}[1]{\\left\\lVert#1\\right\\rVert}
+\\newtheorem{theorem}{Theorem}
+\\newtheorem{lemma}{Lemma}`
+      },
+      'figures/architecture.png': {
+        type: 'image',
+        folder: 'figures',
+        content: '[Binary Image Asset: figures/architecture.png]'
+      }
+    };
+
+    // Application State
+    let state = {
+      files: JSON.parse(JSON.stringify(initialFiles)),
+      folders: ['chapters', 'figures'],
+      expandedFolders: { 'chapters': true, 'figures': true },
+      activeFile: 'main.tex',
+      mainDoc: 'main.tex',
+      openTabs: ['main.tex', 'chapters/intro.tex', 'references.bib'],
+      autoCompile: true,
+      compileTimer: null,
+      zoom: 1.0,
+      editorMode: 'source',
+      layout: 'split',
+      logsVisible: false,
+      activeLogFilter: 'all',
+      historyMode: false,
+      undoStack: [],
+      redoStack: [],
+      newItemType: 'file',
+      reviewComments: [
+        {
+          id: 1,
+          author: 'Dr. Marcus Reid',
+          color: 'sky',
+          time: '14 mins ago',
+          file: 'main.tex',
+          line: 25,
+          quote: '\\max(0, \\gamma - \\rho_\\varphi(f_\\theta(x_t), u_t))^2',
+          text: 'Should we specify the Lipschitz constant bound for \\rho_\\varphi here?',
+          resolved: false
+        },
+        {
+          id: 2,
+          author: 'Sora Takahashi',
+          color: 'purple',
+          time: '1 hour ago',
+          file: 'chapters/intro.tex',
+          line: 6,
+          quote: 'continuous relaxation of metric temporal logic',
+          text: 'Added citation to Garcez & Lamb (2023) to support this claim.',
+          resolved: false
+        },
+        {
+          id: 3,
+          author: 'Dr. Elena Lin',
+          color: 'emerald',
+          time: 'Yesterday',
+          file: 'main.tex',
+          line: 48,
+          quote: 'Table 1',
+          text: 'Double-checked all 1,000 OOD seeds; numbers are final.',
+          resolved: false
+        }
+      ]
+    };
+
+    // DOM Elements
+    const textarea = document.getElementById('editor-textarea');
+    const highlightPre = document.getElementById('editor-highlight');
+    const lineNumbersDiv = document.getElementById('line-numbers');
+    const activeLineBand = document.getElementById('active-line-band');
+
+    // ==================== 2. INITIALIZATION ====================
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      renderFileTree();
+      renderOpenTabs();
+      loadFileIntoEditor('main.tex');
+      renderReviewComments();
+      compileProject(false);
+      setupResizers();
+      setupKeyboardShortcuts();
+      setupProjectTitleEdit();
+      setupOutsideClickClose();
+    });
+
+    // ==================== 3. FILE TREE & OUTLINE ====================
+    function renderFileTree() {
+      const container = document.getElementById('file-tree-container');
+      container.innerHTML = '';
+
+      // Root files first (sorted: .tex first, then others)
+      const allPaths = Object.keys(state.files);
+      const rootFiles = allPaths.filter(p => !p.includes('/')).sort((a, b) => {
+        if (a === state.mainDoc) return -1;
+        if (b === state.mainDoc) return 1;
+        return a.localeCompare(b);
+      });
+
+      // Render folders
+      state.folders.sort().forEach(folder => {
+        const isExpanded = state.expandedFolders[folder] !== false;
+        const folderEl = document.createElement('div');
+        folderEl.className = 'mb-0.5';
+
+        const header = document.createElement('div');
+        header.className = 'flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-200/70 cursor-pointer text-slate-700 font-medium';
+        header.onclick = () => {
+          state.expandedFolders[folder] = !isExpanded;
+          renderFileTree();
+        };
+        header.innerHTML = `
+          <i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+          <i data-lucide="${isExpanded ? 'folder-open' : 'folder'}" class="w-3.5 h-3.5 text-amber-500 shrink-0"></i>
+          <span class="truncate">${folder}</span>
+        `;
+        folderEl.appendChild(header);
+
+        if (isExpanded) {
+          const childrenContainer = document.createElement('div');
+          childrenContainer.className = 'pl-4 space-y-0.5 mt-0.5';
+          const folderFiles = allPaths.filter(p => p.startsWith(folder + '/')).sort();
+          folderFiles.forEach(filePath => {
+            childrenContainer.appendChild(createFileRow(filePath, filePath.split('/').pop()));
+          });
+          folderEl.appendChild(childrenContainer);
+        }
+
+        container.appendChild(folderEl);
+      });
+
+      // Render root files
+      rootFiles.forEach(filePath => {
+        container.appendChild(createFileRow(filePath, filePath));
+      });
+
+      lucide.createIcons();
+    }
+
+    function createFileRow(fullPath, displayName) {
+      const isSelected = state.activeFile === fullPath;
+      const isMain = state.mainDoc === fullPath;
+      const fileObj = state.files[fullPath];
+
+      let iconName = 'file-text';
+      let iconColor = 'text-slate-500';
+      if (fileObj.type === 'tex') { iconName = 'file-code-2'; iconColor = 'text-olGreen'; }
+      else if (fileObj.type === 'bib') { iconName = 'book-open'; iconColor = 'text-sky-600'; }
+      else if (fileObj.type === 'image') { iconName = 'image'; iconColor = 'text-purple-600'; }
+      else if (fileObj.type === 'sty') { iconName = 'settings-2'; iconColor = 'text-amber-600'; }
+
+      const row = document.createElement('div');
+      row.className = `flex items-center justify-between px-2 py-1 rounded cursor-pointer transition ${
+        isSelected ? 'bg-olGreen/15 text-olGreen font-semibold' : 'text-slate-700 hover:bg-slate-200/70'
+      }`;
+      row.onclick = () => selectFile(fullPath);
+
+      row.innerHTML = `
+        <div class="flex items-center gap-1.5 min-w-0">
+          <i data-lucide="${iconName}" class="w-3.5 h-3.5 ${iconColor} shrink-0"></i>
+          <span class="truncate">${displayName}</span>
+        </div>
+        ${isMain ? '<span class="text-[9px] uppercase bg-slate-200 text-slate-600 px-1 rounded font-bold shrink-0" title="Main Document">Main</span>' : ''}
+      `;
+      return row;
+    }
+
+    function selectFile(filePath) {
+      // Save current editor content first
+      if (state.activeFile && state.files[state.activeFile] && state.files[state.activeFile].type !== 'image') {
+        state.files[state.activeFile].content = textarea.value;
+      }
+
+      state.activeFile = filePath;
+      if (!state.openTabs.includes(filePath)) {
+        state.openTabs.push(filePath);
+      }
+
+      renderFileTree();
+      renderOpenTabs();
+      loadFileIntoEditor(filePath);
+    }
+
+    function renderOpenTabs() {
+      const tabsBar = document.getElementById('editor-tabs-bar');
+      tabsBar.innerHTML = '';
+
+      state.openTabs.forEach(filePath => {
+        if (!state.files[filePath]) return;
+        const isActive = state.activeFile === filePath;
+        const fileName = filePath.split('/').pop();
+
+        const tab = document.createElement('div');
+        tab.className = `group flex items-center gap-1.5 px-2.5 py-1 rounded-t cursor-pointer border-t border-x transition shrink-0 ${
+          isActive
+            ? 'bg-white border-olBorder text-slate-900 font-semibold -mb-[1px]'
+            : 'bg-transparent border-transparent text-slate-600 hover:bg-slate-200/70'
+        }`;
+        tab.onclick = () => selectFile(filePath);
+
+        tab.innerHTML = `
+          <span>${fileName}</span>
+          ${state.openTabs.length > 1 ? `<button onclick="closeTab(event, '${filePath}')" class="opacity-60 hover:opacity-100 hover:text-red-600 rounded p-0.5"><i data-lucide="x" class="w-3 h-3"></i></button>` : ''}
+        `;
+        tabsBar.appendChild(tab);
+      });
+
+      lucide.createIcons();
+    }
+
+    function closeTab(e, filePath) {
+      e.stopPropagation();
+      state.openTabs = state.openTabs.filter(t => t !== filePath);
+      if (state.activeFile === filePath && state.openTabs.length > 0) {
+        selectFile(state.openTabs[state.openTabs.length - 1]);
+      } else {
+        renderOpenTabs();
+      }
+    }
+
+    function loadFileIntoEditor(filePath) {
+      const fileObj = state.files[filePath];
+      if (!fileObj) return;
+
+      const codeWrapper = document.getElementById('code-editor-wrapper');
+      const visualWrapper = document.getElementById('visual-editor-wrapper');
+      const imageWrapper = document.getElementById('image-viewer-wrapper');
+
+      if (fileObj.type === 'image') {
+        codeWrapper.classList.add('hidden');
+        visualWrapper.classList.add('hidden');
+        imageWrapper.classList.remove('hidden');
+        imageWrapper.classList.add('flex');
+        document.getElementById('image-viewer-title').textContent = filePath;
+        updateOutline([]);
+        return;
+      }
+
+      imageWrapper.classList.add('hidden');
+      imageWrapper.classList.remove('flex');
+
+      if (state.editorMode === 'visual') {
+        codeWrapper.classList.add('hidden');
+        visualWrapper.classList.remove('hidden');
+        renderVisualEditor(fileObj.content);
+      } else {
+        visualWrapper.classList.add('hidden');
+        codeWrapper.classList.remove('hidden');
+      }
+
+      textarea.value = fileObj.content;
+      state.undoStack = [fileObj.content];
+      state.redoStack = [];
+      updateHighlightingAndLines();
+      updateCursorStats();
+    }
+
+    // ==================== 4. SYNTAX HIGHLIGHTING & LINE NUMBERS ====================
+    function highlightLatex(code) {
+      // Escape HTML first
+      let escaped = code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Process line by line so comments are accurate
+      return escaped.split('\n').map(line => {
+        // Split unescaped % comment
+        let commentIdx = -1;
+        for (let i = 0; i < line.length; i++) {
+          if (line[i] === '%' && (i === 0 || line[i - 1] !== '\\')) {
+            commentIdx = i;
+            break;
+          }
+        }
+
+        let codePart = commentIdx >= 0 ? line.slice(0, commentIdx) : line;
+        let commentPart = commentIdx >= 0 ? `<span class="tok-comment">${line.slice(commentIdx)}</span>` : '';
+
+        // Highlight inline math $...$
+        codePart = codePart.replace(/(\$[^$]+\$)/g, '<span class="tok-math">$1</span>');
+
+        // Highlight \begin{...} and \end{...}
+        codePart = codePart.replace(/(\\(?:begin|end))(\{[^}]+\})/g, '<span class="tok-cmd">$1</span><span class="tok-env">$2</span>');
+
+        // Highlight LaTeX commands \command
+        codePart = codePart.replace(/(\\[a-zA-Z@]+[*]?)/g, '<span class="tok-cmd">$1</span>');
+
+        // Highlight braces { }
+        codePart = codePart.replace(/([{}])/g, '<span class="tok-brace">$1</span>');
+
+        return codePart + commentPart;
+      }).join('\n') + '\n';
+    }
+
+    function updateHighlightingAndLines() {
+      const val = textarea.value;
+      highlightPre.innerHTML = highlightLatex(val);
+
+      // Update line numbers
+      const linesCount = val.split('\n').length;
+      let numsHtml = '';
+      for (let i = 1; i <= linesCount; i++) {
+        numsHtml += `<div>${i}</div>`;
+      }
+      lineNumbersDiv.innerHTML = numsHtml;
+
+      // Sync scroll
+      syncEditorScroll();
+
+      // Update Document Outline
+      extractAndRenderOutline(val);
+    }
+
+    function syncEditorScroll() {
+      highlightPre.scrollTop = textarea.scrollTop;
+      highlightPre.scrollLeft = textarea.scrollLeft;
+      lineNumbersDiv.scrollTop = textarea.scrollTop;
+      updateActiveLinePosition();
+    }
+
+    function updateActiveLinePosition() {
+      const pos = textarea.selectionStart || 0;
+      const lineIndex = textarea.value.slice(0, pos).split('\n').length - 1;
+      const lineHeight = 21.6;
+      const topOffset = 12 + (lineIndex * lineHeight) - textarea.scrollTop;
+      activeLineBand.style.top = `${topOffset}px`;
+    }
+
+    function updateCursorStats() {
+      const val = textarea.value;
+      const pos = textarea.selectionStart || 0;
+      const linesUpToCursor = val.slice(0, pos).split('\n');
+      const ln = linesUpToCursor.length;
+      const col = linesUpToCursor[linesUpToCursor.length - 1].length + 1;
+      document.getElementById('status-cursor').textContent = `Ln ${ln}, Col ${col}`;
+
+      // Word count (strip LaTeX commands)
+      const plainWords = val.replace(/\\[a-zA-Z]+\{[^}]*\}/g, ' ').replace(/\\[a-zA-Z]+/g, ' ').replace(/[^a-zA-Z0-9\s]/g, ' ').trim().split(/\s+/).filter(Boolean);
+      document.getElementById('status-wordcount').textContent = `${plainWords.length} words`;
+      updateActiveLinePosition();
+    }
+
+    // Editor Event Listeners
+    textarea.addEventListener('input', () => {
+      const val = textarea.value;
+      if (state.files[state.activeFile]) {
+        state.files[state.activeFile].content = val;
+      }
+      state.undoStack.push(val);
+      if (state.undoStack.length > 60) state.undoStack.shift();
+
+      updateHighlightingAndLines();
+      updateCursorStats();
+
+      if (state.autoCompile) {
+        clearTimeout(state.compileTimer);
+        state.compileTimer = setTimeout(() => compileProject(false), 550);
+      }
+    });
+
+    textarea.addEventListener('scroll', syncEditorScroll);
+    textarea.addEventListener('click', updateCursorStats);
+    textarea.addEventListener('keyup', updateCursorStats);
+
+    // Tab key indentation support
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+        textarea.dispatchEvent(new Event('input'));
+      }
+    });
+
+    // ==================== 5. DOCUMENT OUTLINE EXTRACTION ====================
+    function extractAndRenderOutline(texContent) {
+      const lines = texContent.split('\n');
+      const items = [];
+      const regex = /\\(section|subsection|subsubsection)\*?\{([^}]+)\}/;
+
+      lines.forEach((line, idx) => {
+        const match = line.match(regex);
+        if (match) {
+          items.push({
+            level: match[1],
+            title: match[2],
+            line: idx + 1
+          });
+        }
+      });
+
+      updateOutline(items);
+    }
+
+    function updateOutline(items) {
+      const list = document.getElementById('document-outline-list');
+      const countBadge = document.getElementById('outline-count');
+      countBadge.textContent = items.length;
+      list.innerHTML = '';
+
+      if (items.length === 0) {
+        list.innerHTML = '<div class="text-slate-400 italic px-2 py-1">No sections in current file</div>';
+        return;
+      }
+
+      items.forEach(item => {
+        const btn = document.createElement('button');
+        const indent = item.level === 'subsection' ? 'pl-4' : item.level === 'subsubsection' ? 'pl-7' : 'pl-1.5';
+        btn.className = `w-full text-left py-1 pr-2 ${indent} rounded hover:bg-slate-100 text-slate-700 truncate flex items-center gap-1.5 transition`;
+        btn.onclick = () => jumpToLine(item.line);
+        btn.innerHTML = `
+          <span class="w-1.5 h-1.5 rounded-full ${item.level === 'section' ? 'bg-olGreen' : 'bg-slate-400'} shrink-0"></span>
+          <span class="truncate">${item.title}</span>
+        `;
+        list.appendChild(btn);
+      });
+    }
+
+    function jumpToLine(lineNumber) {
+      if (state.editorMode === 'visual') setEditorMode('source');
+      const lines = textarea.value.split('\n');
+      let charPos = 0;
+      for (let i = 0; i < Math.min(lineNumber - 1, lines.length); i++) {
+        charPos += lines[i].length + 1;
+      }
+      textarea.focus();
+      textarea.setSelectionRange(charPos, charPos + (lines[lineNumber - 1]?.length || 0));
+      textarea.scrollTop = Math.max(0, (lineNumber - 5) * 21.6);
+      updateCursorStats();
+    }
+
+    // ==================== 6. EDITOR TOOLBAR ACTIONS ====================
+    function wrapSelection(prefix, suffix) {
+      if (state.editorMode === 'visual') setEditorMode('source');
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selected = textarea.value.substring(start, end) || 'text';
+      const replacement = prefix + selected + suffix;
+      textarea.value = textarea.value.substring(0, start) + replacement + textarea.value.substring(end);
+      textarea.focus();
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+      textarea.dispatchEvent(new Event('input'));
+    }
+
+    function insertSnippet(snippet) {
+      if (state.editorMode === 'visual') setEditorMode('source');
+      const start = textarea.selectionStart;
+      textarea.value = textarea.value.substring(0, start) + snippet + textarea.value.substring(start);
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
+      textarea.dispatchEvent(new Event('input'));
+    }
+
+    function insertFigureSnippet() {
+      insertSnippet(`\n\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.85\\linewidth]{figures/architecture.png}\n  \\caption{System architecture overview.}\n  \\label{fig:new}\n\\end{figure}\n`);
+    }
+
+    function insertTableSnippet() {
+      insertSnippet(`\n\\begin{table}[h]\n  \\centering\n  \\caption{Experimental comparison.}\n  \\begin{tabular}{lcc}\n    \\toprule\n    \\textbf{Model} & \\textbf{Accuracy} & \\textbf{Latency} \\\\\n    \\midrule\n    Baseline & 84.2\\% & 12.1 ms \\\\\n    Ours & \\textbf{95.4\\%} & \\textbf{8.4 ms} \\\\\n    \\bottomrule\n  \\end{tabular}\n\\end{table}\n`);
+    }
+
+    function insertListSnippet(env) {
+      insertSnippet(`\n\\begin{${env}}\n  \\item First item\n  \\item Second item\n\\end{${env}}\n`);
+    }
+
+    function openCitationPicker() {
+      const bibContent = state.files['references.bib']?.content || '';
+      const keys = [...bibContent.matchAll(/@\w+\{([^,]+),/g)].map(m => m[1]);
+      const chosenKey = keys[0] || 'garcez2022neurosymbolic';
+      insertSnippet(`\\cite{${chosenKey}}`);
+      showToast(`Inserted \\cite{${chosenKey}} from references.bib`);
+    }
+
+    function editorUndo() {
+      if (state.undoStack.length > 1) {
+        const current = state.undoStack.pop();
+        state.redoStack.push(current);
+        const prev = state.undoStack[state.undoStack.length - 1];
+        textarea.value = prev;
+        state.files[state.activeFile].content = prev;
+        updateHighlightingAndLines();
+        updateCursorStats();
+      }
+    }
+
+    function editorRedo() {
+      if (state.redoStack.length > 0) {
+        const next = state.redoStack.pop();
+        state.undoStack.push(next);
+        textarea.value = next;
+        state.files[state.activeFile].content = next;
+        updateHighlightingAndLines();
+        updateCursorStats();
+      }
+    }
+
+    // Visual Editor Mode
+    function setEditorMode(mode) {
+      state.editorMode = mode;
+      const srcBtn = document.getElementById('mode-source-btn');
+      const visBtn = document.getElementById('mode-visual-btn');
+      const codeWrap = document.getElementById('code-editor-wrapper');
+      const visWrap = document.getElementById('visual-editor-wrapper');
+
+      if (mode === 'visual') {
+        srcBtn.className = 'px-2.5 py-1 rounded text-slate-600 hover:text-slate-900 transition';
+        visBtn.className = 'px-2.5 py-1 rounded bg-white text-slate-900 shadow-sm transition';
+        codeWrap.classList.add('hidden');
+        visWrap.classList.remove('hidden');
+        renderVisualEditor(textarea.value);
+      } else {
+        visBtn.className = 'px-2.5 py-1 rounded text-slate-600 hover:text-slate-900 transition';
+        srcBtn.className = 'px-2.5 py-1 rounded bg-white text-slate-900 shadow-sm transition';
+        visWrap.classList.add('hidden');
+        codeWrap.classList.remove('hidden');
+        updateHighlightingAndLines();
+      }
+    }
+
+    function renderVisualEditor(tex) {
+      const container = document.getElementById('visual-editor-blocks');
+      container.innerHTML = '';
+
+      // Extract sections and paragraphs cleanly for visual editing
+      const bodyMatch = tex.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+      const body = bodyMatch ? bodyMatch[1] : tex;
+      const blocks = body.split(/\n\s*\n/).filter(b => b.trim() && !b.trim().startsWith('\\maketitle') && !b.trim().startsWith('\\bibliography'));
+
+      blocks.forEach((block, idx) => {
+        const div = document.createElement('div');
+        div.className = 'p-3 rounded-lg border border-transparent hover:border-slate-300 focus-within:border-olGreen focus-within:bg-emerald-50/20 transition outline-none';
+        div.contentEditable = true;
+
+        let displayHtml = block
+          .replace(/\\section\*?\{([^}]+)\}/g, '<h2 class="text-xl font-bold text-slate-900">$1</h2>')
+          .replace(/\\subsection\*?\{([^}]+)\}/g, '<h3 class="text-lg font-semibold text-slate-800">$1</h3>')
+          .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+          .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
+          .replace(/\\begin\{abstract\}([\s\S]*?)\\end\{abstract\}/g, '<div class="bg-slate-50 p-3 rounded border-l-4 border-olGreen italic text-sm"><strong>Abstract:</strong> $1</div>');
+
+        div.innerHTML = displayHtml;
+        div.addEventListener('blur', () => {
+          // Sync text edits back to source if plain paragraph changed
+          if (!block.includes('\\begin{') && !block.includes('\\section')) {
+            const updatedPlain = div.innerText.trim();
+            if (updatedPlain && updatedPlain !== block.trim()) {
+              textarea.value = textarea.value.replace(block.trim(), updatedPlain);
+              textarea.dispatchEvent(new Event('input'));
+              showToast('Synced visual edit to LaTeX source');
+            }
+          }
+        });
+        container.appendChild(div);
+      });
+    }
+
+    // ==================== 7. LIVE LATEX PARSER & ACADEMIC PDF RENDERER ====================
+    function compileProject(manualTrigger = false) {
+      const icon = document.getElementById('recompile-icon');
+      const label = document.getElementById('recompile-label');
+
+      if (manualTrigger) {
+        icon.classList.add('animate-spin');
+        label.textContent = 'Compiling...';
+      }
+
+      const startTime = performance.now();
+
+      setTimeout(() => {
+        if (manualTrigger) {
+          icon.classList.remove('animate-spin');
+          label.textContent = 'Recompile';
+        }
+
+        // Resolve \input{...} directives starting from mainDoc
+        let fullSource = state.files[state.mainDoc]?.content || '';
+        fullSource = fullSource.replace(/\\input\{([^}]+)\}/g, (_, relPath) => {
+          const normalized = relPath.endsWith('.tex') ? relPath : relPath + '.tex';
+          return state.files[normalized]?.content || `% Missing file: ${normalized}`;
+        });
+
+        // Parse Bibliography entries
+        const bibEntries = parseBibtex(state.files['references.bib']?.content || '');
+
+        // Check syntax warnings/errors for Logs panel
+        const diagnostics = analyzeLatexDiagnostics(fullSource);
+        renderLogs(diagnostics);
+
+        // Render PDF DOM
+        renderAcademicPdf(fullSource, bibEntries);
+
+        const elapsed = ((performance.now() - startTime + 180) / 1000).toFixed(2);
+        document.getElementById('compile-time-label').textContent = `Compiled in ${elapsed}s`;
+
+        if (manualTrigger) {
+          showToast('PDF compiled successfully');
+        }
+      }, manualTrigger ? 260 : 40);
+    }
+
+    function parseBibtex(bibRaw) {
+      const entries = {};
+      const entryBlocks = bibRaw.split(/@\w+\{/);
+      let idx = 1;
+      entryBlocks.slice(1).forEach(block => {
+        const keyMatch = block.match(/^([^,]+),/);
+        if (!keyMatch) return;
+        const key = keyMatch[1].trim();
+        const titleMatch = block.match(/title\s*=\s*\{([^}]+)\}/i);
+        const authorMatch = block.match(/author\s*=\s*\{([^}]+)\}/i);
+        const yearMatch = block.match(/year\s*=\s*\{([^}]+)\}/i);
+        const venueMatch = block.match(/(?:journal|booktitle|publisher)\s*=\s*\{([^}]+)\}/i);
+
+        entries[key] = {
+          num: idx++,
+          key,
+          title: titleMatch ? titleMatch[1] : 'Untitled Reference',
+          author: authorMatch ? authorMatch[1] : 'Unknown Author',
+          year: yearMatch ? yearMatch[1] : '2025',
+          venue: venueMatch ? venueMatch[1] : ''
+        };
+      });
+      return entries;
+    }
+
+    function renderAcademicPdf(source, bibEntries) {
+      const wrapper = document.getElementById('pdf-pages-wrapper');
+      wrapper.innerHTML = '';
+
+      // Extract Metadata
+      const titleMatch = source.match(/\\title\{([\s\S]*?)\}(?=\s*\\(?:author|date|begin))/);
+      const authorMatch = source.match(/\\author\{([\s\S]*?)\}(?=\s*\\(?:date|begin))/);
+      const abstractMatch = source.match(/\\begin\{abstract\}([\s\S]*?)\\end\{abstract\}/);
+
+      const paperTitle = titleMatch ? formatInlineLatex(titleMatch[1]) : 'Untitled LaTeX Document';
+      const paperAuthors = authorMatch ? formatInlineLatex(authorMatch[1]).replace(/\\\\/g, '<br>') : '';
+      const paperAbstract = abstractMatch ? formatInlineLatex(abstractMatch[1], bibEntries) : '';
+
+      // Extract Document Body
+      const bodyMatch = source.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+      let body = bodyMatch ? bodyMatch[1] : source;
+
+      // Remove preamble/title/abstract commands already rendered in header
+      body = body
+        .replace(/\\maketitle/g, '')
+        .replace(/\\begin\{abstract\}[\s\S]*?\\end\{abstract\}/g, '')
+        .replace(/\\bibliographystyle\{[^}]+\}/g, '')
+        .replace(/\\bibliography\{[^}]+\}/g, '');
+
+      // Parse Sections, Subsections, Equations, Figures, Tables, Lists, Paragraphs
+      const renderedBodyHtml = parseBodyToHtml(body, bibEntries);
+
+      // Build Page 1 (Title Header + Abstract + Two-Column Content)
+      const page1 = document.createElement('div');
+      page1.className = 'pdf-page w-full p-8 sm:p-11 rounded-sm';
+      page1.style.transform = `scale(${state.zoom})`;
+
+      let referencesHtml = '';
+      const bibList = Object.values(bibEntries);
+      if (bibList.length > 0) {
+        referencesHtml = `
+          <div class="mt-5 pt-3 border-t border-slate-300">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-900 mb-2">References</h2>
+            <ol class="space-y-1.5 text-[11px] leading-snug text-slate-800">
+              ${bibList.map(b => `
+                <li class="flex gap-1.5">
+                  <span class="font-semibold">[${b.num}]</span>
+                  <span>${b.author}. "${b.title}." <em>${b.venue}</em>, ${b.year}.</span>
+                </li>
+              `).join('')}
+            </ol>
+          </div>
+        `;
+      }
+
+      page1.innerHTML = `
+        <!-- Paper Title Block -->
+        <div class="text-center mb-5 border-b border-slate-200 pb-4">
+          <h1 class="text-xl sm:text-2xl font-bold text-slate-950 leading-tight mb-2.5">${paperTitle}</h1>
+          <div class="text-xs sm:text-[13px] text-slate-700 leading-relaxed">${paperAuthors}</div>
+        </div>
+
+        <!-- Abstract -->
+        ${paperAbstract ? `
+          <div class="mx-auto max-w-xl mb-6 px-4 py-2.5 bg-slate-50/80 border-y border-slate-200 text-[12.5px] leading-relaxed">
+            <span class="font-bold uppercase tracking-wide text-[11px] mr-1">Abstract—</span>${paperAbstract}
+          </div>
+        ` : ''}
+
+        <!-- Two-Column Academic Body -->
+        <div class="pdf-two-col text-[13px] leading-[1.55] text-slate-900 space-y-3">
+          ${renderedBodyHtml}
+          ${referencesHtml}
+        </div>
+
+        <!-- Page Footer -->
+        <div class="mt-8 pt-3 border-t border-slate-100 flex justify-between text-[10px] text-slate-400 font-sans">
+          <span>Generated with Overleaf • ${document.getElementById('setting-compiler').value}</span>
+          <span>1</span>
+        </div>
+      `;
+
+      wrapper.appendChild(page1);
+      document.getElementById('pdf-total-pages').textContent = '1';
+      document.getElementById('pdf-current-page').textContent = '1';
+    }
+
+    function parseBodyToHtml(body, bibEntries) {
+      let html = '';
+      let sectionCounter = 0;
+      let subSectionCounter = 0;
+      let eqCounter = 0;
+      let figCounter = 0;
+      let tabCounter = 0;
+
+      // Tokenize major environments first
+      let processed = body
+        // Display Equations
+        .replace(/\\begin\{equation\*?\}([\s\S]*?)\\end\{equation\*?\}/g, (_, texMath) => {
+          eqCounter++;
+          const renderedMath = renderKaTeX(texMath.trim(), true);
+          return `\n<div class="my-3 flex items-center justify-between gap-2 break-inside-avoid">
+            <div class="flex-1 overflow-x-auto text-center">${renderedMath}</div>
+            <span class="text-xs text-slate-600 font-sans">(${eqCounter})</span>
+          </div>\n`;
+        })
+        // Itemize Lists
+        .replace(/\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g, (_, listBody) => {
+          const items = listBody.split(/\\item/).slice(1).map(it => `<li>${formatInlineLatex(it.trim(), bibEntries)}</li>`).join('');
+          return `\n<ul class="list-disc pl-5 my-2 space-y-1">${items}</ul>\n`;
+        })
+        // Enumerate Lists
+        .replace(/\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g, (_, listBody) => {
+          const items = listBody.split(/\\item/).slice(1).map(it => `<li>${formatInlineLatex(it.trim(), bibEntries)}</li>`).join('');
+          return `\n<ol class="list-decimal pl-5 my-2 space-y-1">${items}</ol>\n`;
+        })
+        // Figures
+        .replace(/\\begin\{figure\}(?:\[[^\]]*\])?([\s\S]*?)\\end\{figure\}/g, (_, figBody) => {
+          figCounter++;
+          const capMatch = figBody.match(/\\caption\{([^}]+)\}/);
+          const caption = capMatch ? formatInlineLatex(capMatch[1], bibEntries) : 'System diagram.';
+          return `\n<figure class="my-3.5 p-2.5 border border-slate-200 rounded bg-slate-50/60 break-inside-avoid">
+            <svg viewBox="0 0 460 190" class="w-full h-auto mb-2">
+              <defs>
+                <marker id="pdfarrow${figCounter}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#334155"/>
+                </marker>
+              </defs>
+              <rect x="12" y="60" width="95" height="65" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.8"/>
+              <text x="59" y="89" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#0369a1">Perception</text>
+              <text x="59" y="104" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#0369a1">Backbone</text>
+              <line x1="107" y1="92" x2="146" y2="92" stroke="#334155" stroke-width="1.8" marker-end="url(#pdfarrow${figCounter})"/>
+              <rect x="150" y="25" width="135" height="52" rx="6" fill="#dcfce7" stroke="#138a07" stroke-width="1.8"/>
+              <text x="217" y="48" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#14532d">Neural Encoder</text>
+              <text x="217" y="63" text-anchor="middle" font-family="Inter, sans-serif" font-size="9.5" fill="#166534">Latent State f_θ(x_t)</text>
+              <rect x="150" y="110" width="135" height="52" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.8"/>
+              <text x="217" y="133" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#78350f">Logic Solver</text>
+              <text x="217" y="148" text-anchor="middle" font-family="Inter, sans-serif" font-size="9.5" fill="#92400e">Robustness ρ_φ</text>
+              <line x1="217" y1="77" x2="217" y2="106" stroke="#334155" stroke-width="1.8" marker-end="url(#pdfarrow${figCounter})"/>
+              <line x1="285" y1="92" x2="324" y2="92" stroke="#334155" stroke-width="1.8" marker-end="url(#pdfarrow${figCounter})"/>
+              <rect x="328" y="60" width="115" height="65" rx="6" fill="#f3e8ff" stroke="#7e22ce" stroke-width="1.8"/>
+              <text x="385" y="89" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#581c87">Safe Action</text>
+              <text x="385" y="104" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#6b21a8">u_t ∈ U_safe</text>
+            </svg>
+            <figcaption class="text-[11px] text-slate-700 leading-snug"><strong>Figure ${figCounter}:</strong> ${caption}</figcaption>
+          </figure>\n`;
+        })
+        // Tables
+        .replace(/\\begin\{table\}(?:\[[^\]]*\])?([\s\S]*?)\\end\{table\}/g, (_, tabBody) => {
+          tabCounter++;
+          const capMatch = tabBody.match(/\\caption\{([^}]+)\}/);
+          const caption = capMatch ? formatInlineLatex(capMatch[1], bibEntries) : 'Results summary.';
+          const tabularMatch = tabBody.match(/\\begin\{tabular\}\{[^}]+\}([\s\S]*?)\\end\{tabular\}/);
+          let rowsHtml = '';
+          if (tabularMatch) {
+            const rawRows = tabularMatch[1]
+              .replace(/\\toprule|\\midrule|\\bottomrule|\\hline/g, '')
+              .split('\\\\')
+              .map(r => r.trim())
+              .filter(Boolean);
+
+            rowsHtml = rawRows.map((row, rIdx) => {
+              const cells = row.split('&').map(c => formatInlineLatex(c.trim(), bibEntries));
+              const tag = rIdx === 0 ? 'th' : 'td';
+              const rowCls = rIdx === 0 ? 'border-y border-slate-800 bg-slate-100/70 font-semibold' : (rIdx === rawRows.length - 1 ? 'border-b border-slate-800' : '');
+              return `<tr class="${rowCls}">${cells.map((c, cIdx) => `<${tag} class="py-1 px-1.5 ${cIdx === 0 ? 'text-left' : 'text-center'}">${c}</${tag}>`).join('')}</tr>`;
+            }).join('');
+          }
+
+          return `\n<div class="my-3.5 break-inside-avoid">
+            <div class="text-[11px] text-slate-800 mb-1.5 leading-snug"><strong>Table ${tabCounter}:</strong> ${caption}</div>
+            <table class="w-full text-[11px] border-collapse">${rowsHtml}</table>
+          </div>\n`;
+        });
+
+      // Split remaining text by lines/paragraphs
+      const chunks = processed.split(/\n\s*\n/);
+      chunks.forEach(chunk => {
+        const trimmed = chunk.trim();
+        if (!trimmed || trimmed.startsWith('%')) return;
+
+        if (trimmed.startsWith('<div') || trimmed.startsWith('<ul') || trimmed.startsWith('<ol') || trimmed.startsWith('<figure')) {
+          html += trimmed;
+          return;
+        }
+
+        // Check headings inside chunk
+        const lines = trimmed.split('\n');
+        let paraBuffer = [];
+
+        const flushPara = () => {
+          if (paraBuffer.length > 0) {
+            const text = paraBuffer.join(' ');
+            html += `<p class="mb-2.5">${formatInlineLatex(text, bibEntries)}</p>`;
+            paraBuffer = [];
+          }
+        };
+
+        lines.forEach(line => {
+          const l = line.trim();
+          if (!l || l.startsWith('%')) return;
+
+          const secMatch = l.match(/^\\section\*?\{([^}]+)\}/);
+          const subMatch = l.match(/^\\subsection\*?\{([^}]+)\}/);
+
+          if (secMatch) {
+            flushPara();
+            sectionCounter++;
+            subSectionCounter = 0;
+            html += `<h2 class="text-[14.5px] font-bold text-slate-950 uppercase tracking-wide mt-4 mb-1.5">${sectionCounter}. ${formatInlineLatex(secMatch[1], bibEntries)}</h2>`;
+          } else if (subMatch) {
+            flushPara();
+            subSectionCounter++;
+            html += `<h3 class="text-[13.5px] font-bold italic text-slate-900 mt-3 mb-1">${sectionCounter}.${subSectionCounter} ${formatInlineLatex(subMatch[1], bibEntries)}</h3>`;
+          } else {
+            paraBuffer.push(l);
+          }
+        });
+
+        flushPara();
+      });
+
+      return html;
+    }
+
+    function formatInlineLatex(str, bibEntries = {}) {
+      if (!str) return '';
+      // Strip comments
+      let clean = str.replace(/(^|[^\\])%.*$/gm, '$1');
+
+      // Render inline math $...$ via KaTeX
+      clean = clean.replace(/\$([^$]+)\$/g, (_, mathExpr) => {
+        return renderKaTeX(mathExpr, false);
+      });
+
+      // Formatting commands
+      clean = clean
+        .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+        .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
+        .replace(/\\emph\{([^}]+)\}/g, '<em>$1</em>')
+        .replace(/\\texttt\{([^}]+)\}/g, '<code class="font-mono text-[11.5px] bg-slate-100 px-1 rounded">$1</code>')
+        .replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, '<a href="$1" target="_blank" class="text-blue-700 underline">$2</a>')
+        .replace(/\\ref\{tab:[^}]+\}/g, '1')
+        .replace(/\\ref\{fig:[^}]+\}/g, '1')
+        .replace(/\\label\{[^}]+\}/g, '')
+        .replace(/\\quad/g, '&emsp;')
+        .replace(/~/g, '&nbsp;')
+        .replace(/\\%/g, '%')
+        .replace(/\\&/g, '&amp;');
+
+      // Citations \cite{key1,key2}
+      clean = clean.replace(/\\cite\{([^}]+)\}/g, (_, keysStr) => {
+        const nums = keysStr.split(',').map(k => {
+          const entry = bibEntries[k.trim()];
+          return entry ? entry.num : '?';
+        });
+        return `<span class="text-blue-800 font-medium">[${nums.join(', ')}]</span>`;
+      });
+
+      return clean;
+    }
+
+    function renderKaTeX(tex, displayMode) {
+      try {
+        if (window.katex) {
+          return katex.renderToString(tex, {
+            throwOnError: false,
+            displayMode: displayMode
+          });
+        }
+      } catch (e) {
+        // Fallback
+      }
+      return `<span class="font-mono text-emerald-900 bg-emerald-50 px-1 rounded">${tex}</span>`;
+    }
+
+    // ==================== 8. COMPILATION LOGS & DIAGNOSTICS ====================
+    function analyzeLatexDiagnostics(source) {
+      const logs = [];
+
+      // Check unmatched braces
+      const openBraces = (source.match(/\{/g) || []).length;
+      const closeBraces = (source.match(/\}/g) || []).length;
+      if (openBraces !== closeBraces) {
+        logs.push({
+          type: 'error',
+          file: state.mainDoc,
+          line: 1,
+          title: 'Unbalanced curly braces detected',
+          detail: `Found ${openBraces} opening '{' and ${closeBraces} closing '}' characters.`
+        });
+      }
+
+      // Check \begin{document}
+      if (!source.includes('\\begin{document}')) {
+        logs.push({
+          type: 'error',
+          file: state.mainDoc,
+          line: 1,
+          title: 'LaTeX Error: Missing \\begin{document}',
+          detail: 'Every standalone LaTeX document must contain \\begin{document} ... \\end{document}.'
+        });
+      }
+
+      // Realistic Overleaf Overfull \hbox warning
+      logs.push({
+        type: 'warning',
+        file: 'main.tex',
+        line: 33,
+        title: 'Overfull \\hbox (2.14pt too wide) in paragraph at lines 33--36',
+        detail: '[]\\OT1/cmr/m/n/10 during policy optimization, we balance task reward J(\\pi) against symbolic invariant...'
+      });
+
+      // Info log
+      logs.push({
+        type: 'info',
+        file: 'main.pdf',
+        line: 1,
+        title: 'Output written on main.pdf (1 page, 142,810 bytes)',
+        detail: `Transcript written on main.log using ${document.getElementById('setting-compiler').value}.`
+      });
+
+      return logs;
+    }
+
+    function renderLogs(logs) {
+      const errCount = logs.filter(l => l.type === 'error').length;
+      const warnCount = logs.filter(l => l.type === 'warning').length;
+
+      document.getElementById('err-count').textContent = errCount;
+      document.getElementById('warn-count').textContent = warnCount;
+      document.getElementById('log-badge-count').textContent = errCount > 0 ? errCount : warnCount;
+      document.getElementById('log-badge-count').className = errCount > 0
+        ? 'bg-red-100 text-red-800 px-1.5 rounded-full text-[10px] font-bold'
+        : 'bg-amber-100 text-amber-800 px-1.5 rounded-full text-[10px] font-bold';
+
+      const container = document.getElementById('logs-content-area');
+      container.innerHTML = '';
+
+      if (state.activeLogFilter === 'raw') {
+        container.innerHTML = `<pre class="font-mono text-[11px] text-slate-700 bg-slate-50 p-3 rounded border border-slate-200 whitespace-pre-wrap">This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025) (preloaded format=pdflatex)
+ restricted \\write18 enabled.
+entering extended mode
+(./main.tex
+LaTeX2e &lt;2024-11-01&gt; patch level 1
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(./chapters/intro.tex)
+Overfull \\hbox (2.14pt too wide) in paragraph at lines 33--36
+(./main.bbl) [1{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] (./main.aux) )
+Output written on main.pdf (1 page, 142810 bytes).
+Transcript written on main.log.</pre>`;
+        return;
+      }
+
+      const filtered = logs.filter(l => state.activeLogFilter === 'all' || l.type === state.activeLogFilter);
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        const borderCol = item.type === 'error' ? 'border-l-red-600 bg-red-50/40' : item.type === 'warning' ? 'border-l-amber-500 bg-amber-50/40' : 'border-l-sky-500 bg-slate-50';
+        const badgeCol = item.type === 'error' ? 'bg-red-100 text-red-800' : item.type === 'warning' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800';
+
+        card.className = `p-3 rounded border border-slate-200 border-l-4 ${borderCol} cursor-pointer hover:shadow-sm transition`;
+        card.onclick = () => {
+          toggleLogsView();
+          jumpToLine(item.line);
+        };
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-1">
+            <span class="uppercase text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeCol}">${item.type}</span>
+            <span class="font-mono text-[11px] text-slate-500">${item.file} • line ${item.line}</span>
+          </div>
+          <div class="font-semibold text-slate-900 mb-0.5">${item.title}</div>
+          <div class="font-mono text-[11px] text-slate-600">${item.detail}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function toggleLogsView() {
+      state.logsVisible = !state.logsVisible;
+      const pdfCont = document.getElementById('pdf-viewer-container');
+      const logsCont = document.getElementById('logs-viewer-container');
+      const btn = document.getElementById('btn-toggle-logs');
+
+      if (state.logsVisible) {
+        pdfCont.classList.add('hidden');
+        logsCont.classList.remove('hidden');
+        logsCont.classList.add('flex');
+        btn.classList.add('bg-amber-100', 'border-amber-400');
+      } else {
+        logsCont.classList.add('hidden');
+        logsCont.classList.remove('flex');
+        pdfCont.classList.remove('hidden');
+        btn.classList.remove('bg-amber-100', 'border-amber-400');
+      }
+    }
+
+    function filterLogs(type) {
+      state.activeLogFilter = type;
+      ['all', 'error', 'warning', 'raw'].forEach(t => {
+        const el = document.getElementById(`log-tab-${t}`);
+        el.className = t === type
+          ? 'px-2.5 py-1 rounded bg-white shadow-sm font-semibold text-slate-800'
+          : 'px-2.5 py-1 rounded hover:bg-white/60 text-slate-600 font-medium';
+      });
+      compileProject(false);
+    }
+
+    // ==================== 9. RESIZABLE SPLITTERS ====================
+    function setupResizers() {
+      const resizerLeft = document.getElementById('resizer-left');
+      const sidebar = document.getElementById('left-sidebar');
+      const resizerRight = document.getElementById('resizer-right');
+      const pdfPane = document.getElementById('pdf-pane');
+      const workspace = document.getElementById('workspace');
+
+      let draggingLeft = false;
+      let draggingRight = false;
+
+      resizerLeft.addEventListener('mousedown', () => {
+        draggingLeft = true;
+        resizerLeft.classList.add('active');
+        document.body.style.cursor = 'col-resize';
+      });
+
+      resizerRight.addEventListener('mousedown', () => {
+        draggingRight = true;
+        resizerRight.classList.add('active');
+        document.body.style.cursor = 'col-resize';
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (draggingLeft) {
+          const newWidth = Math.max(160, Math.min(420, e.clientX));
+          sidebar.style.width = `${newWidth}px`;
+        }
+        if (draggingRight) {
+          const rect = workspace.getBoundingClientRect();
+          const rightWidth = Math.max(260, Math.min(rect.width - 320, rect.right - e.clientX));
+          pdfPane.style.width = `${rightWidth}px`;
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (draggingLeft || draggingRight) {
+          draggingLeft = false;
+          draggingRight = false;
+          resizerLeft.classList.remove('active');
+          resizerRight.classList.remove('active');
+          document.body.style.cursor = '';
+        }
+      });
+    }
+
+    // ==================== 10. TOP BAR, DRAWERS, MODALS & INTERACTIONS ====================
+    document.getElementById('btn-menu').addEventListener('click', () => {
+      document.getElementById('menu-drawer-backdrop').classList.remove('hidden');
+      document.getElementById('menu-drawer').classList.remove('-translate-x-full');
+    });
+
+    function closeMenuDrawer() {
+      document.getElementById('menu-drawer-backdrop').classList.add('hidden');
+      document.getElementById('menu-drawer').classList.add('-translate-x-full');
+    }
+
+    function setupProjectTitleEdit() {
+      const wrapper = document.getElementById('project-title-wrapper');
+      const display = document.getElementById('project-title-display');
+      const input = document.getElementById('project-title-input');
+
+      wrapper.addEventListener('click', () => {
+        wrapper.classList.add('hidden');
+        input.classList.remove('hidden');
+        input.focus();
+        input.select();
+      });
+
+      const commitTitle = () => {
+        const val = input.value.trim() || 'Untitled Project';
+        display.textContent = val;
+        document.title = `${val} - Overleaf, Online LaTeX Editor`;
+        input.classList.add('hidden');
+        wrapper.classList.remove('hidden');
+      };
+
+      input.addEventListener('blur', commitTitle);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') commitTitle();
+      });
+    }
+
+    function toggleRightDrawer(tab) {
+      const drawer = document.getElementById('right-drawer');
+      const title = document.getElementById('right-drawer-title');
+      const rev = document.getElementById('drawer-review-content');
+      const chat = document.getElementById('drawer-chat-content');
+
+      const isAlreadyOpen = !drawer.classList.contains('hidden') && drawer.dataset.activeTab === tab;
+      if (isAlreadyOpen) {
+        closeRightDrawer();
+        return;
+      }
+
+      drawer.classList.remove('hidden');
+      drawer.dataset.activeTab = tab;
+
+      if (tab === 'review') {
+        title.textContent = 'Review & Comments';
+        rev.classList.remove('hidden');
+        chat.classList.add('hidden');
+      } else {
+        title.textContent = 'Project Chat';
+        chat.classList.remove('hidden');
+        rev.classList.add('hidden');
+        document.getElementById('chat-unread-dot').classList.add('hidden');
+      }
+    }
+
+    function closeRightDrawer() {
+      document.getElementById('right-drawer').classList.add('hidden');
+    }
+
+    function renderReviewComments() {
+      const list = document.getElementById('review-comments-list');
+      list.innerHTML = '';
+
+      state.reviewComments.forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'p-2.5 rounded-lg border border-slate-200 bg-white shadow-sm space-y-1.5';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-800">${c.author}</span>
+            <span class="text-[10px] text-slate-400">${c.time}</span>
+          </div>
+          <div onclick="selectFile('${c.file}'); jumpToLine(${c.line});" class="px-2 py-1 bg-amber-50 border-l-2 border-amber-400 font-mono text-[10.5px] text-slate-600 truncate cursor-pointer hover:bg-amber-100">
+            ${c.file}:${c.line} — "${c.quote}"
+          </div>
+          <p class="text-slate-700 leading-relaxed">${c.text}</p>
+          <div class="flex justify-end pt-1">
+            <button onclick="resolveComment(${c.id})" class="text-[11px] text-olGreen hover:underline font-medium">✓ Resolve</button>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    function addInlineComment() {
+      const pos = textarea.selectionStart || 0;
+      const line = textarea.value.slice(0, pos).split('\n').length;
+      const selected = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd) || textarea.value.split('\n')[line - 1]?.trim().slice(0, 32) || 'Section text';
+
+      state.reviewComments.unshift({
+        id: Date.now(),
+        author: 'Dr. Elena Lin (You)',
+        color: 'emerald',
+        time: 'Just now',
+        file: state.activeFile,
+        line: line,
+        quote: selected,
+        text: 'Please review wording and mathematical notation here.'
+      });
+
+      renderReviewComments();
+      toggleRightDrawer('review');
+      showToast('Added comment at line ' + line);
+    }
+
+    function resolveComment(id) {
+      state.reviewComments = state.reviewComments.filter(c => c.id !== id);
+      renderReviewComments();
+      showToast('Comment resolved');
+    }
+
+    function sendChatMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      const list = document.getElementById('chat-messages-list');
+      const bubble = document.createElement('div');
+      bubble.className = 'flex flex-col gap-1';
+      bubble.innerHTML = `
+        <div class="flex items-center justify-between text-[11px] text-slate-500">
+          <span class="font-semibold text-emerald-700">Dr. Elena Lin (You)</span>
+          <span>Now</span>
+        </div>
+        <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 text-slate-800">${msg}</div>
+      `;
+      list.appendChild(bubble);
+      list.scrollTop = list.scrollHeight;
+      input.value = '';
+    }
+
+    // History Mode
+    function toggleHistoryMode() {
+      state.historyMode = !state.historyMode;
+      const bar = document.getElementById('history-bar');
+      const btn = document.getElementById('btn-history');
+      if (state.historyMode) {
+        bar.classList.remove('hidden');
+        btn.classList.add('bg-olHeaderHover', 'text-amber-300');
+      } else {
+        bar.classList.add('hidden');
+        btn.classList.remove('bg-olHeaderHover', 'text-amber-300');
+      }
+    }
+
+    function previewHistoryVersion(ver) {
+      const labels = {
+        'current': 'v2.4 — Current Working Draft (Today, 18:54)',
+        'v2.3': 'v2.3 — Added Theorem 1 & Proof (Yesterday, 21:12)',
+        'v2.2': 'v2.2 — Updated Architecture TikZ Diagram (Nov 21)',
+        'v2.1': 'v2.1 — Initial IEEE Template Setup (Nov 18)'
+      };
+      document.getElementById('history-version-label').textContent = labels[ver] || ver;
+      showToast('Previewing snapshot ' + ver);
+    }
+
+    function restoreHistoryVersion() {
+      toggleHistoryMode();
+      showToast('Restored selected project snapshot');
+    }
+
+    // Layout & Zoom Controls
+    function setLayout(mode) {
+      state.layout = mode;
+      const editorPane = document.getElementById('editor-pane');
+      const pdfPane = document.getElementById('pdf-pane');
+      const resizerRight = document.getElementById('resizer-right');
+
+      ['split', 'editor', 'pdf'].forEach(m => {
+        document.getElementById(`check-layout-${m}`).classList.toggle('hidden', m !== mode);
+      });
+
+      if (mode === 'split') {
+        editorPane.classList.remove('hidden');
+        pdfPane.classList.remove('hidden');
+        resizerRight.classList.remove('hidden');
+        pdfPane.style.width = '46%';
+      } else if (mode === 'editor') {
+        editorPane.classList.remove('hidden');
+        pdfPane.classList.add('hidden');
+        resizerRight.classList.add('hidden');
+      } else if (mode === 'pdf') {
+        editorPane.classList.add('hidden');
+        pdfPane.classList.remove('hidden');
+        resizerRight.classList.add('hidden');
+        pdfPane.style.width = '100%';
+      }
+      closeAllDropdowns();
+    }
+
+    function toggleSidebar() {
+      const sb = document.getElementById('left-sidebar');
+      const rl = document.getElementById('resizer-left');
+      sb.classList.toggle('hidden');
+      rl.classList.toggle('hidden');
+      closeAllDropdowns();
+    }
+
+    function toggleOutline() {
+      const list = document.getElementById('document-outline-list');
+      const chev = document.getElementById('outline-chevron');
+      list.classList.toggle('hidden');
+      chev.classList.toggle('-rotate-90');
+    }
+
+    function adjustZoom(delta) {
+      state.zoom = Math.max(0.6, Math.min(1.6, +(state.zoom + delta).toFixed(1)));
+      document.getElementById('zoom-level-label').textContent = `${Math.round(state.zoom * 100)}%`;
+      document.querySelectorAll('.pdf-page').forEach(p => {
+        p.style.transform = `scale(${state.zoom})`;
+      });
+    }
+
+    function resetZoom() {
+      state.zoom = 1.0;
+      adjustZoom(0);
+    }
+
+    function setAutoCompile(val) {
+      state.autoCompile = val;
+      document.getElementById('check-autocompile-on').classList.toggle('hidden', !val);
+      document.getElementById('check-autocompile-off').classList.toggle('hidden', val);
+      closeAllDropdowns();
+      showToast(val ? 'Auto Compile enabled' : 'Auto Compile disabled');
+    }
+
+    function compileFromScratch() {
+      closeAllDropdowns();
+      showToast('Cleared auxiliary cache (.aux, .bbl, .log)');
+      compileProject(true);
+    }
+
+    // File Creation / Renaming / Deletion
+    function openNewFileModal(type) {
+      state.newItemType = type;
+      document.getElementById('modal-new-file-title').textContent = type === 'folder' ? 'New Folder' : 'New File';
+      document.getElementById('new-item-name').placeholder = type === 'folder' ? 'appendix' : 'chapters/results.tex';
+      document.getElementById('new-item-name').value = '';
+      openModal('modal-new-file');
+      setTimeout(() => document.getElementById('new-item-name').focus(), 50);
+    }
+
+    function createNewItem(e) {
+      e.preventDefault();
+      const rawName = document.getElementById('new-item-name').value.trim();
+      if (!rawName) return;
+
+      if (state.newItemType === 'folder') {
+        if (!state.folders.includes(rawName)) {
+          state.folders.push(rawName);
+          state.expandedFolders[rawName] = true;
+        }
+        renderFileTree();
+        closeModal('modal-new-file');
+        showToast(`Created folder "${rawName}"`);
+        return;
+      }
+
+      const parts = rawName.split('/');
+      const folder = parts.length > 1 ? parts.slice(0, -1).join('/') : '';
+      if (folder && !state.folders.includes(folder)) {
+        state.folders.push(folder);
+        state.expandedFolders[folder] = true;
+      }
+
+      const ext = rawName.split('.').pop();
+      state.files[rawName] = {
+        type: ext === 'bib' ? 'bib' : ext === 'sty' ? 'sty' : 'tex',
+        folder,
+        content: ext === 'tex'
+          ? `\\section{New Section}\nWrite your LaTeX content for \\texttt{${rawName}} here.\n`
+          : `% ${rawName}\n`
+      };
+
+      closeModal('modal-new-file');
+      selectFile(rawName);
+      showToast(`Created ${rawName}`);
+    }
+
+    function renameSelectedFile() {
+      if (state.activeFile === state.mainDoc) {
+        showToast('Cannot rename the active Main Document directly');
+        return;
+      }
+      openNewFileModal('file');
+      document.getElementById('modal-new-file-title').textContent = `Rename ${state.activeFile}`;
+      document.getElementById('new-item-name').value = state.activeFile;
+    }
+
+    function deleteSelectedFile() {
+      if (state.activeFile === state.mainDoc) {
+        showToast('Cannot delete main.tex');
+        return;
+      }
+      const toDelete = state.activeFile;
+      delete state.files[toDelete];
+      state.openTabs = state.openTabs.filter(t => t !== toDelete);
+      selectFile(state.mainDoc);
+      showToast(`Deleted ${toDelete}`);
+    }
+
+    function triggerUploadSimulation() {
+      const mockName = 'figures/ablation_plot.png';
+      if (!state.folders.includes('figures')) state.folders.push('figures');
+      state.files[mockName] = { type: 'image', folder: 'figures', content: '[Uploaded Image]' };
+      selectFile(mockName);
+      showToast('Uploaded figures/ablation_plot.png');
+    }
+
+    // Search & Replace
+    function toggleSearchBar() {
+      const bar = document.getElementById('search-replace-bar');
+      bar.classList.toggle('hidden');
+      if (!bar.classList.contains('hidden')) {
+        document.getElementById('search-input').focus();
+      }
+    }
+
+    function performSearch() {
+      const query = document.getElementById('search-input').value;
+      const countEl = document.getElementById('search-match-count');
+      if (!query) {
+        countEl.textContent = '0 matches';
+        return;
+      }
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const matches = textarea.value.match(new RegExp(escaped, 'gi')) || [];
+      countEl.textContent = `${matches.length} match${matches.length === 1 ? '' : 'es'}`;
+    }
+
+    function replaceNextMatch() {
+      const query = document.getElementById('search-input').value;
+      const rep = document.getElementById('replace-input').value;
+      if (!query) return;
+      const idx = textarea.value.indexOf(query);
+      if (idx !== -1) {
+        textarea.value = textarea.value.slice(0, idx) + rep + textarea.value.slice(idx + query.length);
+        textarea.dispatchEvent(new Event('input'));
+        performSearch();
+      }
+    }
+
+    function replaceAllMatches() {
+      const query = document.getElementById('search-input').value;
+      const rep = document.getElementById('replace-input').value;
+      if (!query) return;
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      textarea.value = textarea.value.replace(new RegExp(escaped, 'g'), rep);
+      textarea.dispatchEvent(new Event('input'));
+      performSearch();
+      showToast('Replaced all occurrences');
+    }
+
+    // Share & Settings Actions
+    function inviteCollaborator() {
+      const email = document.getElementById('share-email-input').value.trim();
+      const role = document.getElementById('share-role-select').value;
+      if (!email) return;
+
+      const list = document.getElementById('collaborators-list');
+      const initials = email.slice(0, 2).toUpperCase();
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-200';
+      row.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px]">${initials}</span>
+          <div>
+            <div class="font-semibold text-slate-800">${email}</div>
+            <div class="text-[11px] text-slate-500">Invited just now</div>
+          </div>
+        </div>
+        <span class="text-slate-600 font-medium">${role}</span>
+      `;
+      list.appendChild(row);
+      document.getElementById('share-email-input').value = '';
+      showToast(`Invitation sent to ${email}`);
+    }
+
+    function copyShareLink() {
+      const input = document.getElementById('share-link-url');
+      input.select();
+      document.execCommand('copy');
+      showToast('Project read-only link copied to clipboard');
+    }
+
+    function updateCompilerSettings() {
+      const comp = document.getElementById('setting-compiler').value;
+      const tl = document.getElementById('setting-texlive').value;
+      document.getElementById('status-compiler-badge').textContent = `${comp} • ${tl}`;
+      compileProject(true);
+    }
+
+    function toggleEditorTheme(theme) {
+      const codeWrap = document.getElementById('code-editor-wrapper');
+      if (theme === 'dark') {
+        codeWrap.classList.add('invert', 'hue-rotate-180');
+      } else {
+        codeWrap.classList.remove('invert', 'hue-rotate-180');
+      }
+    }
+
+    function downloadPdfSimulation() {
+      showToast('Downloading main.pdf (142 KB)...');
+      window.print();
+    }
+
+    function downloadSourceZip() {
+      closeMenuDrawer();
+      const blob = new Blob([textarea.value], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'overleaf-project-main.tex';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Downloaded project source');
+    }
+
+    function cloneProjectSimulation() {
+      closeMenuDrawer();
+      showToast('Created copy: "Neural-Symbolic Reasoning (Copy)"');
+    }
+
+    function showWordCountModal() {
+      closeMenuDrawer();
+      showToast(`Total Project Words: ${document.getElementById('status-wordcount').textContent}`);
+    }
+
+    // Modal & Dropdown Helpers
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function toggleDropdown(id) {
+      const el = document.getElementById(id);
+      const isHidden = el.classList.contains('hidden');
+      closeAllDropdowns();
+      if (isHidden) el.classList.remove('hidden');
+    }
+
+    function closeAllDropdowns() {
+      document.querySelectorAll('[id^="dropdown-"]').forEach(d => d.classList.add('hidden'));
+    }
+
+    function setupOutsideClickClose() {
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('[id^="btn-"]') && !e.target.closest('[id^="dropdown-"]')) {
+          closeAllDropdowns();
+        }
+      });
+    }
+
+    function setupKeyboardShortcuts() {
+      document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          compileProject(true);
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          toggleSearchBar();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+          e.preventDefault();
+          wrapSelection('\\textbf{', '}');
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
+          e.preventDefault();
+          wrapSelection('\\textit{', '}');
+        }
+      });
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast-enter bg-olDark text-white text-xs px-3.5 py-2.5 rounded-md shadow-xl border border-slate-700 flex items-center gap-2';
+      toast.innerHTML = `<span class="w-2 h-2 rounded-full bg-olGreenLight"></span><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.25s';
+        setTimeout(() => toast.remove(), 250);
+      }, 2600);
+    }
+  </script>
+</body>
+</html>
