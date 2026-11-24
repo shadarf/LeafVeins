@@ -273,4 +273,4 @@ LeafVeins is inspired by Overleaf and AyakaLeaf Pro. It is not affiliated with o
 
 ## License
 
-No license file has been added yet. Add a `LICENSE` file before publishing if you want to define reuse and contribution terms.
+See license document for more details. 
